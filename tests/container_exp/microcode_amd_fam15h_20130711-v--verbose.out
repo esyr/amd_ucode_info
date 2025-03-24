@@ -1,0 +1,17 @@
+Microcode patches in container_cache/microcode_amd_fam15h_20130711.bin:
+ [equiv entry@0x0000000c: cpuid 0x00600f20, equiv id 0x6020, errata mask 0x00000000, errata compare 0x00000000, res 0x0000]
+ [equiv entry@0x0000001c: cpuid 0x00610f01, equiv id 0x6101, errata mask 0x00000000, errata compare 0x00000000, res 0x0000]
+ [equiv entry@0x0000002c: cpuid 0x00600f12, equiv id 0x6012, errata mask 0x00000000, errata compare 0x00000000, res 0x0000]
+ [equiv entry@0x0000003c: cpuid 0x00000000, equiv id 0x0000, errata mask 0x00000000, errata compare 0x00000000, res 0x0000]
+  Family=0x15 Model=0x01 Stepping=0x02: Patch=0x0600063d Length=2592 bytes Start=84 bytes Date=2013-03-06 Equiv_id=0x6012
+   [data_code=0x03062013, mc_patch_data_id=0x8002, mc_patch_data_len=0x00, init_flag=0x00, mc_patch_data_checksum=0x00000000]
+   [nb_dev_id=0x00000000, sb_dev_id=0x00000000, nb_rev_id=0x00, sb_rev_id=0x00, bios_api_rev=0x00, reserved=[0x00, 0x00, 0x00]]
+   [match_reg=[0x445ba959, 0x75b4edac, 0x1aff943e, 0xe5fb6f42, 0xaf6c5616, 0x3aa5721b, 0xc61806ba, 0xeebf7734]]
+  Family=0x15 Model=0x02 Stepping=0x00: Patch=0x06000822 Length=2592 bytes Start=2684 bytes Date=2013-01-03 Equiv_id=0x6020
+   [data_code=0x01032013, mc_patch_data_id=0x8002, mc_patch_data_len=0x00, init_flag=0x00, mc_patch_data_checksum=0x00000000]
+   [nb_dev_id=0x00000000, sb_dev_id=0x00000000, nb_rev_id=0x00, sb_rev_id=0x00, bios_api_rev=0x00, reserved=[0x00, 0x00, 0x00]]
+   [match_reg=[0xe081acb0, 0x0f811dfd, 0x17a16522, 0xac204122, 0x45acb894, 0x5be0ff38, 0xd1e6c1f0, 0xe52b6647]]
+  Family=0x15 Model=0x10 Stepping=0x01: Patch=0x06001119 Length=2592 bytes Start=5284 bytes Date=2012-07-13 Equiv_id=0x6101
+   [data_code=0x07132012, mc_patch_data_id=0x8002, mc_patch_data_len=0x00, init_flag=0x00, mc_patch_data_checksum=0x00000000]
+   [nb_dev_id=0x00000000, sb_dev_id=0x00000000, nb_rev_id=0x00, sb_rev_id=0x00, bios_api_rev=0x00, reserved=[0x00, 0x00, 0x00]]
+   [match_reg=[0x3cc0219d, 0x68471b37, 0xa94f7d11, 0x0fd57cfa, 0x265df346, 0xa0e5712d, 0x562b724e, 0x348d2ec4]]

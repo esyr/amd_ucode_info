@@ -1,0 +1,18 @@
+Microcode patches in container_cache/microcode_amd_latest.bin:
+  Family=0x10 Model=0x02 Stepping=0x03: Patch=0x01000083 Length=960 bytes Start=308 bytes Date=2008-04-30 Equiv_id=0x1022
+  Family=0x10 Model=0x02 Stepping=0x02: Patch=0x01000083 Length=960 bytes Start=308 bytes Date=2008-04-30 Equiv_id=0x1022
+  Family=0x10 Model=0x02 Stepping=0x0a: Patch=0x01000084 Length=960 bytes Start=1276 bytes Date=2008-05-01 Equiv_id=0x1020
+  Family=0x10 Model=0x06 Stepping=0x02: Patch=0x010000c7 Length=960 bytes Start=2244 bytes Date=2010-03-11 Equiv_id=0x1062
+  Family=0x10 Model=0x04 Stepping=0x03: Patch=0x010000c8 Length=960 bytes Start=3212 bytes Date=2010-03-11 Equiv_id=0x1043
+  Family=0x10 Model=0x06 Stepping=0x03: Patch=0x010000c8 Length=960 bytes Start=3212 bytes Date=2010-03-11 Equiv_id=0x1043
+  Family=0x10 Model=0x05 Stepping=0x03: Patch=0x010000c8 Length=960 bytes Start=3212 bytes Date=2010-03-11 Equiv_id=0x1043
+  Family=0x10 Model=0x08 Stepping=0x01: Patch=0x010000d9 Length=960 bytes Start=4180 bytes Date=2011-10-12 Equiv_id=0x1081
+  Family=0x10 Model=0x09 Stepping=0x01: Patch=0x010000d9 Length=960 bytes Start=4180 bytes Date=2011-10-12 Equiv_id=0x1081
+  Family=0x10 Model=0x08 Stepping=0x00: Patch=0x010000da Length=960 bytes Start=5148 bytes Date=2011-10-24 Equiv_id=0x1080
+  Family=0x10 Model=0x04 Stepping=0x02: Patch=0x010000db Length=960 bytes Start=6116 bytes Date=2011-10-24 Equiv_id=0x1041
+  Family=0x10 Model=0x05 Stepping=0x02: Patch=0x010000db Length=960 bytes Start=6116 bytes Date=2011-10-24 Equiv_id=0x1041
+  Family=0x10 Model=0x0a Stepping=0x00: Patch=0x010000dc Length=960 bytes Start=7084 bytes Date=2011-10-24 Equiv_id=0x10a0
+  Family=0x11 Model=0x03 Stepping=0x01: Patch=0x02000032 Length=512 bytes Start=8052 bytes Date=2008-03-06 Equiv_id=0x2031
+  Family=0x12 Model=0x01 Stepping=0x00: Patch=0x03000027 Length=960 bytes Start=8572 bytes Date=2011-13-09 Equiv_id=0x3010
+  Family=0x14 Model=0x01 Stepping=0x00: Patch=0x05000029 Length=1568 bytes Start=9540 bytes Date=2013-01-21 Equiv_id=0x5010
+  Family=0x14 Model=0x02 Stepping=0x00: Patch=0x05000119 Length=1568 bytes Start=11116 bytes Date=2013-01-18 Equiv_id=0x5020

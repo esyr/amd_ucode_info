@@ -1,0 +1,7 @@
+Microcode patches in container_cache/microcode_amd_fam16h_latest.bin:
+ [equiv entry@0x0000000c: cpuid 0x00700f01, equiv id 0x7001, errata mask 0x00000000, errata compare 0x00000000, res 0x0000]
+ [equiv entry@0x0000001c: cpuid 0x00000000, equiv id 0x0000, errata mask 0x00000000, errata compare 0x00000000, res 0x0000]
+  Family=0x16 Model=0x00 Stepping=0x01: Patch=0x0700010f Length=3458 bytes Start=52 bytes Date=2014-02-19 Equiv_id=0x7001
+   [data_code=0x02192014, mc_patch_data_id=0x8003, mc_patch_data_len=0x00, init_flag=0x00, mc_patch_data_checksum=0x00000000]
+   [nb_dev_id=0x00000000, sb_dev_id=0x00000000, nb_rev_id=0x00, sb_rev_id=0x00, bios_api_rev=0x00, reserved=[0xaa, 0xaa, 0xaa]]
+   [match_reg=[0xf8f60115, 0xb79ef487, 0x185ce824, 0x00d916de, 0xbcd63544, 0xba5d5f77, 0xbafd8857, 0xa566ee6e]]

@@ -1,0 +1,4 @@
+Microcode patches in container_cache/microcode_amd_fam15h_latest.bin:
+  Family=0x15 Model=0x01 Stepping=0x02: Patch=0x0600063e Length=2592 bytes
+  Family=0x15 Model=0x02 Stepping=0x00: Patch=0x06000852 Length=2592 bytes
+  Family=0x15 Model=0x10 Stepping=0x01: Patch=0x06001119 Length=2592 bytes

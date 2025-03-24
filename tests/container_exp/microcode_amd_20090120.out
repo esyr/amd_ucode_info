@@ -1,0 +1,4 @@
+Microcode patches in container_cache/microcode_amd_20090120.bin:
+  Family=0x10 Model=0x02 Stepping=0x0a: Patch=0x01000084 Length=960 bytes
+  Family=0x10 Model=0x02 Stepping=0x03: Patch=0x01000083 Length=960 bytes
+  Family=0x10 Model=0x02 Stepping=0x02: Patch=0x01000083 Length=960 bytes
