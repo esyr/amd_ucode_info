@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # SPDX-License-Identifier: MIT License
-# Copyright (C) 2020 Advanced Micro Devices, Inc. 
+# Copyright (C) 2020 Advanced Micro Devices, Inc.
 
 """
 Parse an amd-ucode container file and print the family, model, stepping number,
@@ -25,21 +25,26 @@ PATCH_TYPE = 1
 VERBOSE_DEBUG = 2
 
 FMS = namedtuple("FMS", ("family", "model", "stepping"))
-EquivTableEntry = namedtuple("EquivTableEntry", ("cpuid", "equiv_id", "data", "offset"))
-PatchEntry = namedtuple("PatchEntry", ("file", "offset", "size", "equiv_id", "level"))
+EquivTableEntry = namedtuple("EquivTableEntry",
+                             ("cpuid", "equiv_id", "data", "offset"))
+PatchEntry = namedtuple("PatchEntry",
+                        ("file", "offset", "size", "equiv_id", "level"))
 
 
 def read_int32(ucode_file):
     """ Read four bytes of binary data and return as a 32 bit int """
     return int.from_bytes(ucode_file.read(4), 'little')
 
+
 def read_int16(ucode_file):
     """ Read two bytes of binary data and return as a 16 bit int """
     return int.from_bytes(ucode_file.read(2), 'little')
 
+
 def read_int8(ucode_file):
     """ Read one byte of binary data and return as a 8 bit int """
     return int.from_bytes(ucode_file.read(1), 'little')
+
 
 def cpuid2fms(cpu_id):
     family = (cpu_id >> 8) & 0xf
@@ -52,9 +57,11 @@ def cpuid2fms(cpu_id):
 
     return FMS(family, model, stepping)
 
+
 def fms2str(fms):
     return "Family=%#04x Model=%#04x Stepping=%#04x" % \
            (fms.family, fms.model, fms.stepping)
+
 
 def parse_equiv_table(opts, ucode_file, start_offset, eq_table_len):
     """
@@ -122,6 +129,7 @@ def parse_equiv_table(opts, ucode_file, start_offset, eq_table_len):
 
     return (table, raw_table)
 
+
 def extract_patch(opts, out_dir, ucode_file, patch, equiv_table=None):
     """
     Extract patch (along with the respective headers and equivalence table
@@ -137,8 +145,9 @@ def extract_patch(opts, out_dir, ucode_file, patch, equiv_table=None):
     @type ucode_file: io.BufferedIOBase
     @param patch: the patch to write out
     @type patch: PatchEntry
-    @param equiv_table: if provided, a valid container file is created that also
-                        includes entries relevant to the patch's equiv_id
+    @param equiv_table: if provided, a valid container file is created
+                        that also includes entries relevant to the patch's
+                        equiv_id
     @type equiv_table: dict
     """
     cwd = os.getcwd()
@@ -163,7 +172,8 @@ def extract_patch(opts, out_dir, ucode_file, patch, equiv_table=None):
     os.chdir(cwd)
 
     if equiv_table is not None:
-        cpuids = equiv_table[patch.equiv_id].values() if patch.equiv_id in equiv_table else []
+        cpuids = equiv_table[patch.equiv_id].values() \
+                    if patch.equiv_id in equiv_table else []
     else:
         cpuids = None
 
@@ -172,6 +182,7 @@ def extract_patch(opts, out_dir, ucode_file, patch, equiv_table=None):
     out_file.close()
 
     print("    Patch extracted to %s" % out_path)
+
 
 def merge_mc(opts, out_path, table, patches):
     """
@@ -218,11 +229,12 @@ def merge_mc(opts, out_path, table, patches):
 
         print("Microcode written to %s" % out_path)
 
+
 def write_mc(opts, out_file, patches, ucode_file=None, equiv_table=None):
     """
-    Writes microcode data from patches to out_file.  If equiv_table is provided,
-    a valid container file is generated, that also includes a container header,
-    the equivalence table, and patch headers.
+    Writes microcode data from patches to out_file.  If equiv_table
+    is provided, a valid container file is generated, that also includes
+    a container header, the equivalence table, and patch headers.
 
     @param opts: options, as returned by ArgumentParser.parse_args()
     @type opts: argparse.Namespace
@@ -234,9 +246,9 @@ def write_mc(opts, out_file, patches, ucode_file=None, equiv_table=None):
                        if None is provided, a file with path specified
                        in PatchEntry.file is opened instead  (default: None)
     @type ucode_file: io.BufferedIOBase
-    @param equiv_table: if provided, a valid container file is created that also
-                        includes all the necessary headers and entries provided
-                        in equiv_table (default: None)
+    @param equiv_table: if provided, a valid container file is created
+                        that also includes all the necessary headers
+                        and entries provided in equiv_table (default: None)
     @type equiv_table: list(EquivTableEntry)
     """
     if equiv_table is not None:
@@ -271,6 +283,7 @@ def write_mc(opts, out_file, patches, ucode_file=None, equiv_table=None):
         if ucode_file is None:
             in_file.close()
 
+
 def parse_ucode_file(opts, path, start_offset):
     """
     Scan through microcode container file printing the microcode patch level
@@ -304,7 +317,8 @@ def parse_ucode_file(opts, path, start_offset):
         # Read the equivalence table length
         eq_table_len = read_int32(ucode_file)
 
-        ids, table = parse_equiv_table(opts, ucode_file, start_offset, eq_table_len)
+        ids, table = parse_equiv_table(opts, ucode_file, start_offset,
+                                       eq_table_len)
 
         cursor = start_offset + EQ_TABLE_OFFSET + eq_table_len
         while cursor < end_of_file:
@@ -359,15 +373,16 @@ def parse_ucode_file(opts, path, start_offset):
             match_reg = [read_int32(ucode_file) for _ in range(8)]
 
             if opts.verbose:
-                add_info = " Start=%u bytes Date=%04x-%02x-%02x Equiv_id=%#06x" % \
+                add_info = (" Start=%u bytes Date=%04x-%02x-%02x" +
+                            " Equiv_id=%#06x") % \
                            (patch_start, data_code & 0xffff, data_code >> 24,
                             (data_code >> 16) & 0xff, equiv_id)
             else:
                 add_info = ""
 
             if equiv_id not in ids:
-                print("Patch equivalence id not present in equivalence table (%#06x)"
-                      % (equiv_id), file=sys.stderr)
+                print(("Patch equivalence id not present in equivalence" +
+                       " table (%#06x)") % (equiv_id), file=sys.stderr)
                 print(("  Family=???? Model=???? Stepping=????: " +
                        "Patch=%#010x Length=%u bytes%s")
                       % (ucode_level, patch_length, add_info))
@@ -392,7 +407,8 @@ def parse_ucode_file(opts, path, start_offset):
                 print("   [match_reg=[%s]]" %
                       ", ".join(["%#010x" % x for x in match_reg]))
 
-            patch = PatchEntry(path, patch_start, patch_length, equiv_id, ucode_level)
+            patch = PatchEntry(path, patch_start, patch_length, equiv_id,
+                               ucode_level)
             patches.append(patch)
 
             if opts.extract:
@@ -404,6 +420,7 @@ def parse_ucode_file(opts, path, start_offset):
             cursor = cursor + patch_length + 8
 
     return (None, table, patches, 0)
+
 
 def parse_ucode_files(opts):
     all_tables = []
@@ -431,14 +448,18 @@ def parse_ucode_files(opts):
 
     return status
 
+
 def parse_options():
     """ Parse options """
-    parser = argparse.ArgumentParser(description="Print information about an amd-ucode container")
+    parser = argparse.ArgumentParser(description="Print information about" +
+                                                 " an amd-ucode container")
     parser.add_argument("container_file", nargs='+')
     parser.add_argument("-e", "--extract",
-                        help="Dump each patch in container to the specified directory")
+                        help="Dump each patch in container to the specified" +
+                             " directory")
     parser.add_argument("-s", "--split",
-                        help="Split out each patch in a separate container to the specified directory")
+                        help="Split out each patch in a separate container " +
+                             "to the specified directory")
     parser.add_argument("-m", "--merge",
                         help="Write a merged container to the specified file")
     parser.add_argument("-v", "--verbose", action="count", default=0,
@@ -457,11 +478,13 @@ def parse_options():
 
     return opts
 
+
 def main():
     """ main """
     opts = parse_options()
 
     sys.exit(parse_ucode_files(opts))
+
 
 if __name__ == "__main__":
     main()
