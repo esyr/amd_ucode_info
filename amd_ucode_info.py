@@ -10,6 +10,7 @@ raw microcode patches to a provided directory.
 
 import argparse
 import errno
+import io
 import sys
 import os
 
@@ -76,9 +77,9 @@ def parse_equiv_table(opts, ucode_file, start_offset, eq_table_len):
     table_stop = start_offset + EQ_TABLE_OFFSET + eq_table_len
 
     while table_item < table_stop:
-        ucode_file.seek(table_item, 0)
+        ucode_file.seek(table_item, io.SEEK_SET)
         data = ucode_file.read(EQ_TABLE_ENTRY_SIZE)
-        ucode_file.seek(table_item, 0)
+        ucode_file.seek(table_item, io.SEEK_SET)
 
         """
         struct equiv_cpu_entry {
@@ -277,7 +278,7 @@ def write_mc(opts, out_file, patches, ucode_file=None, equiv_table=None):
         else:
             in_file = ucode_file
 
-        in_file.seek(patch.offset, 0)
+        in_file.seek(patch.offset, io.SEEK_SET)
         out_file.write(in_file.read(patch.size))
 
         if ucode_file is None:
@@ -297,11 +298,11 @@ def parse_ucode_file(opts, path, start_offset):
               (path, "+%#x" % start_offset if start_offset else ""))
 
         # Seek to end of file to determine file size
-        ucode_file.seek(0, 2)
+        ucode_file.seek(0, io.SEEK_END)
         end_of_file = ucode_file.tell()
 
         # Check magic number
-        ucode_file.seek(start_offset, 0)
+        ucode_file.seek(start_offset, io.SEEK_SET)
         if ucode_file.read(4) != b'DMA\x00':
             print("ERROR: Missing magic number at beginning of container",
                   file=sys.stderr)
@@ -323,7 +324,7 @@ def parse_ucode_file(opts, path, start_offset):
         cursor = start_offset + EQ_TABLE_OFFSET + eq_table_len
         while cursor < end_of_file:
             # Seek to the start of the patch information
-            ucode_file.seek(cursor, 0)
+            ucode_file.seek(cursor, io.SEEK_SET)
 
             patch_start = cursor + 8
 
