@@ -240,7 +240,7 @@ def write_mc(opts, out_file, patches, ucode_file=None, equiv_table=None):
     @type opts: argparse.Namespace
     @param out_file: file object to write the data to
     @type out_file: io.BufferedIOBase
-    @param patches: an array of patchesto write out
+    @param patches: an array of patches to write out
     @type patches: list(PatchEntry)
     @param ucode_file: file object to read the patch from;
                        if None is provided, a file with path specified
