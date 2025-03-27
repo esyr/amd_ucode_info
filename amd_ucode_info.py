@@ -352,9 +352,16 @@ def parse_ucode_file(opts, path, start_offset):
         eq_table_len = read_int32(ucode_file)
         if not check_bytes_left(ucode_file, eq_table_len, "equivalence table"):
             return (None, None, None, errno.EINVAL)
-
-        ids, table = parse_equiv_table(opts, ucode_file, start_offset,
-                                       eq_table_len)
+        # Both Linux and FreeBSD container parsers currently bail out
+        # if the section is too small to contain at least one entry;
+        if eq_table_len < EQ_TABLE_ENTRY_SIZE:
+            print(("WARNING: equivalence table section size (%d) " +
+                   "is too small to contain a single record") % eq_table_len,
+                  file=sys.stderr)
+            ids, table, zero_cpuid = ({}, [], False)
+        else:
+            ids, table, zero_cpuid = \
+                parse_equiv_table(opts, ucode_file, start_offset, eq_table_len)
 
         cursor = start_offset + EQ_TABLE_OFFSET + eq_table_len
         while cursor < end_of_file:
