@@ -24,6 +24,7 @@ EQ_TABLE_LEN_OFFSET = 8
 EQ_TABLE_OFFSET = MAGIC_SIZE + SECTION_HDR_SIZE
 EQ_TABLE_TYPE = 0
 PATCH_TYPE = 1
+PATCH_HEADER_SIZE = 64  # sizeof(struct microcode_header_amd)
 
 VERBOSE_DEBUG = 2
 
@@ -292,6 +293,31 @@ def parse_ucode_file(opts, path, start_offset):
     Scan through microcode container file printing the microcode patch level
     for each model contained in the file.
     """
+    def check_bytes_left(f, sz, desc):
+        """
+        An auxiliary function for checking if the remaining part of file
+        (from current position to the previously cached "end_of_file" position)
+        is big enough to contain some expected structure and printing an error
+        if it is not the case.
+
+        @param f    File object
+        @param sz   Minimum expected size, in bytes
+        @param desc Description of the structure/entity that is expected to be
+                    at least sz bytes big.
+        @returns    True the remaining part of the file is big enough,
+                    False if file is too short.
+        """
+        bytes_left = end_of_file - f.tell()
+        if bytes_left >= sz:
+            return True
+
+        print(("ERROR: File is too short to contain %s " +
+               "(at position %d, %d byte%s left, at least %d bytes needed)") %
+              (desc, f.tell(), bytes_left, "" if bytes_left == 1 else "s", sz),
+              file=sys.stderr)
+
+        return False
+
     table = None
     patches = []
 
@@ -305,12 +331,17 @@ def parse_ucode_file(opts, path, start_offset):
 
         # Check magic number
         ucode_file.seek(start_offset, io.SEEK_SET)
+        if not check_bytes_left(ucode_file, MAGIC_SIZE, "container magic"):
+            return (None, None, None, errno.EINVAL)
         if ucode_file.read(4) != b'DMA\x00':
             print("ERROR: Missing magic number at beginning of container",
                   file=sys.stderr)
             return (None, None, None, errno.EINVAL)
 
         # Check the equivalence table type
+        if not check_bytes_left(ucode_file, SECTION_HDR_SIZE,
+                                "equivalence table section header"):
+            return (None, None, None, errno.EINVAL)
         eq_table_type = read_int32(ucode_file)
         if eq_table_type != EQ_TABLE_TYPE:
             print("ERROR: Invalid equivalence table identifier: %#010x" %
@@ -319,6 +350,8 @@ def parse_ucode_file(opts, path, start_offset):
 
         # Read the equivalence table length
         eq_table_len = read_int32(ucode_file)
+        if not check_bytes_left(ucode_file, eq_table_len, "equivalence table"):
+            return (None, None, None, errno.EINVAL)
 
         ids, table = parse_equiv_table(opts, ucode_file, start_offset,
                                        eq_table_len)
@@ -327,6 +360,9 @@ def parse_ucode_file(opts, path, start_offset):
         while cursor < end_of_file:
             # Seek to the start of the patch information
             ucode_file.seek(cursor, io.SEEK_SET)
+            if not check_bytes_left(ucode_file, SECTION_HDR_SIZE,
+                                    "microcode patch section header"):
+                return (None, table, patches, errno.EINVAL)
 
             patch_start = cursor + SECTION_HDR_SIZE
 
@@ -341,6 +377,16 @@ def parse_ucode_file(opts, path, start_offset):
                 return (None, table, patches, errno.EINVAL)
 
             patch_length = read_int32(ucode_file)
+            if not check_bytes_left(ucode_file, patch_length,
+                                    "microcode patch section"):
+                return (None, table, patches, errno.EINVAL)
+            if patch_length < PATCH_HEADER_SIZE:
+                print(("ERROR: patch is too short (at least %d bytes " +
+                       "expected, got %d), skipping") %
+                      (PATCH_HEADER_SIZE, patch_length), file=sys.stderr)
+
+                cursor = cursor + SECTION_HDR_SIZE + patch_length
+                continue
 
             """
             struct microcode_header_amd {
