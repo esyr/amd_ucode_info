@@ -73,6 +73,7 @@ def parse_equiv_table(opts, ucode_file, start_offset, eq_table_len):
     """
     table = {}
     raw_table = []
+    zero_cpuid_record = 0
     # For sanity check only
     cpuid_map = {}
 
@@ -100,6 +101,16 @@ def parse_equiv_table(opts, ucode_file, start_offset, eq_table_len):
         res = read_int16(ucode_file)
 
         if equiv_id != 0:
+            # FreeBSD container parser does not iterate over the whole section,
+            # but instead scans until it encounters a record with zero CPUID.
+            if zero_cpuid_record and cpu_id != 0:
+                print(("WARNING: an equivalence table record with non-zero " +
+                       "equiv_id (%#06x) and CPUID %#010x (%s) follows " +
+                       "a record with zero CPUID (at position %#x), some " +
+                       "loader implementations may ignore it") %
+                      (equiv_id, cpu_id, fms2str(cpuid2fms(cpu_id)), ),
+                      file=sys.stderr)
+
             if equiv_id not in table:
                 table[equiv_id] = OrderedDict()
 
@@ -123,6 +134,13 @@ def parse_equiv_table(opts, ucode_file, start_offset, eq_table_len):
             table[equiv_id][cpu_id] = entry
             raw_table.append(entry)
 
+        # FreeBSD parser does not respect section size at all and scans
+        # the equivalence table until it encounters a record with zero CPUID
+        # (see sys/x86/x86/ucode_subr.c:ucode_amd_find()), so check
+        # for a presence of such guard record.
+        if cpu_id == 0:
+            zero_cpuid_record = table_item
+
         if opts.verbose >= VERBOSE_DEBUG:
             print((" [equiv entry@%#010x: cpuid %#010x, equiv id %#06x, " +
                    "errata mask %#010x, errata compare %#010x, res %#06x]") %
@@ -131,7 +149,7 @@ def parse_equiv_table(opts, ucode_file, start_offset, eq_table_len):
 
         table_item += EQ_TABLE_ENTRY_SIZE
 
-    return (table, raw_table)
+    return (table, raw_table, bool(zero_cpuid_record))
 
 
 def extract_patch(opts, out_dir, ucode_file, patch, equiv_table=None):
@@ -362,6 +380,10 @@ def parse_ucode_file(opts, path, start_offset):
         else:
             ids, table, zero_cpuid = \
                 parse_equiv_table(opts, ucode_file, start_offset, eq_table_len)
+
+        if not zero_cpuid:
+            print("WARNING: a guard equivalence table record " +
+                  "with zero CPUID is missing", file=sys.stderr)
 
         cursor = start_offset + EQ_TABLE_OFFSET + eq_table_len
         while cursor < end_of_file:
