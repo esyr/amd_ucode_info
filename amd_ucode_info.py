@@ -17,9 +17,11 @@ import os
 from collections import namedtuple
 from collections import OrderedDict
 
+MAGIC_SIZE = 4
+SECTION_HDR_SIZE = 8
 EQ_TABLE_ENTRY_SIZE = 16
 EQ_TABLE_LEN_OFFSET = 8
-EQ_TABLE_OFFSET = 12
+EQ_TABLE_OFFSET = MAGIC_SIZE + SECTION_HDR_SIZE
 EQ_TABLE_TYPE = 0
 PATCH_TYPE = 1
 
@@ -326,7 +328,7 @@ def parse_ucode_file(opts, path, start_offset):
             # Seek to the start of the patch information
             ucode_file.seek(cursor, io.SEEK_SET)
 
-            patch_start = cursor + 8
+            patch_start = cursor + SECTION_HDR_SIZE
 
             patch_type_bytes = ucode_file.read(4)
             # Beginning of a new container
@@ -418,7 +420,7 @@ def parse_ucode_file(opts, path, start_offset):
             if opts.split:
                 extract_patch(opts, opts.split, ucode_file, patch, ids)
 
-            cursor = cursor + patch_length + 8
+            cursor = cursor + SECTION_HDR_SIZE + patch_length
 
     return (None, table, patches, 0)
 
