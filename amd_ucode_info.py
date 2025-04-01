@@ -35,6 +35,23 @@ PatchEntry = namedtuple("PatchEntry",
                         ("file", "offset", "size", "equiv_id", "level"))
 
 
+def diagmsg(prefix, msg, f=None, offs=None):
+    print("%s%s%s%s: %s" %
+          ("" if f is None else f.name if isinstance(f, io.IOBase) else f,
+           "" if offs is None else "+%#06x" % offs,
+           "" if f is None else ": ",
+           prefix, msg),
+          file=sys.stderr)
+
+
+def err(msg, f=None, offs=None):
+    diagmsg("ERROR", msg, f, offs)
+
+
+def warn(msg, f=None, offs=None):
+    diagmsg("WARNING", msg, f, offs)
+
+
 def read_int32(ucode_file):
     """ Read four bytes of binary data and return as a 32 bit int """
     return int.from_bytes(ucode_file.read(4), 'little')
@@ -104,29 +121,29 @@ def parse_equiv_table(opts, ucode_file, start_offset, eq_table_len):
             # FreeBSD container parser does not iterate over the whole section,
             # but instead scans until it encounters a record with zero CPUID.
             if zero_cpuid_record and cpu_id != 0:
-                print(("WARNING: an equivalence table record with non-zero " +
-                       "equiv_id (%#06x) and CPUID %#010x (%s) follows " +
-                       "a record with zero CPUID (at position %#x), some " +
-                       "loader implementations may ignore it") %
-                      (equiv_id, cpu_id, fms2str(cpuid2fms(cpu_id)), ),
-                      file=sys.stderr)
+                warn(("An equivalence table record with non-zero " +
+                      "equiv_id (%#06x) and CPUID %#010x (%s) follows " +
+                      "a record with zero CPUID (at position %#x), some " +
+                      "loader implementations may ignore it") %
+                     (equiv_id, cpu_id, fms2str(cpuid2fms(cpu_id)),
+                      zero_cpuid_record), ucode_file, table_item)
 
             if equiv_id not in table:
                 table[equiv_id] = OrderedDict()
 
             if cpu_id in table[equiv_id]:
-                print(("WARNING: Duplicate CPUID %#010x (%s) " +
-                       "in the equivalence table for equiv_id %#06x ") %
-                      (cpu_id, fms2str(cpuid2fms(cpu_id)), equiv_id),
-                      file=sys.stderr)
+                warn(("Duplicate CPUID %#010x (%s) in the equivalence table " +
+                      "for equiv_id %#06x") %
+                     (cpu_id, fms2str(cpuid2fms(cpu_id)), equiv_id),
+                     ucode_file, table_item)
 
             if cpu_id in cpuid_map:
                 if equiv_id != cpuid_map[cpu_id]:
-                    print(("WARNING: Different equiv_id's (%#06x and %#06x) " +
-                           "are present in the equivalence table for CPUID " +
-                           "%#010x (%s)") %
-                          (equiv_id, cpuid_map[cpu_id], cpu_id,
-                           fms2str(cpuid2fms(cpu_id))), file=sys.stderr)
+                    warn(("Different equiv_id's (%#06x and %#06x) " +
+                          "are present in the equivalence table for CPUID " +
+                          "%#010x (%s)") %
+                         (equiv_id, cpuid_map[cpu_id], cpu_id,
+                          fms2str(cpuid2fms(cpu_id))), ucode_file, table_item)
             else:
                 cpuid_map[cpu_id] = equiv_id
 
@@ -229,20 +246,19 @@ def merge_mc(opts, out_path, table, patches):
             equivid_map[entry.equiv_id] = dict()
 
         if entry.cpuid in equivid_map[entry.equiv_id]:
-            print(("WARNING: Duplicate CPUID %#010x (%s) in the equivalence " +
-                   "table for equiv_id %#06x ") %
-                  (entry.cpuid, fms2str(cpuid2fms(entry.cpuid)),
-                   entry.equiv_id), file=sys.stderr)
+            warn(("Duplicate CPUID %#010x (%s) in the equivalence table " +
+                  "for equiv_id %#06x ") %
+                 (entry.cpuid, fms2str(cpuid2fms(entry.cpuid)),
+                  entry.equiv_id))
         else:
             equivid_map[entry.equiv_id][entry.cpuid] = entry
 
         if entry.cpuid in cpuid_map:
             if entry.equiv_id != cpuid_map[entry.cpuid]:
-                print(("WARNING: Different equiv_id's (%#06x and %#06x) " +
-                       "are present in the equivalence table for CPUID " +
-                       "%#010x (%s)") %
-                      (entry.equiv_id, cpuid_map[entry.cpuid], entry.cpuid,
-                       fms2str(cpuid2fms(entry.cpuid))), file=sys.stderr)
+                warn(("Different equiv_id's (%#06x and %#06x) are present " +
+                      "in the equivalence table for CPUID %#010x (%s)") %
+                     (entry.equiv_id, cpuid_map[entry.cpuid], entry.cpuid,
+                      fms2str(cpuid2fms(entry.cpuid))))
             else:
                 cpuid_map[entry.cpuid] = entry.equiv_id
 
@@ -329,10 +345,10 @@ def parse_ucode_file(opts, path, start_offset):
         if bytes_left >= sz:
             return True
 
-        print(("ERROR: File is too short to contain %s " +
-               "(at position %d, %d byte%s left, at least %d bytes needed)") %
-              (desc, f.tell(), bytes_left, "" if bytes_left == 1 else "s", sz),
-              file=sys.stderr)
+        err(("File is too short to contain %s (%d byte%s left, " +
+             "at least %d byte%s needed)") %
+            (desc, bytes_left, "" if bytes_left == 1 else "s",
+            sz, "" if sz == 1 else "s"), f, f.tell())
 
         return False
 
@@ -352,8 +368,8 @@ def parse_ucode_file(opts, path, start_offset):
         if not check_bytes_left(ucode_file, MAGIC_SIZE, "container magic"):
             return (None, None, None, errno.EINVAL)
         if ucode_file.read(4) != b'DMA\x00':
-            print("ERROR: Missing magic number at beginning of container",
-                  file=sys.stderr)
+            err("Missing magic number at beginning of container",
+                ucode_file, start_offset)
             return (None, None, None, errno.EINVAL)
 
         # Check the equivalence table type
@@ -362,8 +378,8 @@ def parse_ucode_file(opts, path, start_offset):
             return (None, None, None, errno.EINVAL)
         eq_table_type = read_int32(ucode_file)
         if eq_table_type != EQ_TABLE_TYPE:
-            print("ERROR: Invalid equivalence table identifier: %#010x" %
-                  eq_table_type, file=sys.stderr)
+            err("Invalid equivalence table section identifier: %#010x" %
+                eq_table_type, ucode_file, start_offset + MAGIC_SIZE)
             return (None, None, None, errno.EINVAL)
 
         # Read the equivalence table length
@@ -373,17 +389,16 @@ def parse_ucode_file(opts, path, start_offset):
         # Both Linux and FreeBSD container parsers currently bail out
         # if the section is too small to contain at least one entry;
         if eq_table_len < EQ_TABLE_ENTRY_SIZE:
-            print(("WARNING: equivalence table section size (%d) " +
-                   "is too small to contain a single record") % eq_table_len,
-                  file=sys.stderr)
+            warn(("Equivalence table section size (%d) is too small " +
+                  "to contain a single record") % eq_table_len, ucode_file)
             ids, table, zero_cpuid = ({}, [], False)
         else:
             ids, table, zero_cpuid = \
                 parse_equiv_table(opts, ucode_file, start_offset, eq_table_len)
 
         if not zero_cpuid:
-            print("WARNING: a guard equivalence table record " +
-                  "with zero CPUID is missing", file=sys.stderr)
+            warn("A guard equivalence table record with zero CPUID is missing",
+                 ucode_file)
 
         cursor = start_offset + EQ_TABLE_OFFSET + eq_table_len
         while cursor < end_of_file:
@@ -401,8 +416,8 @@ def parse_ucode_file(opts, path, start_offset):
                 return (cursor, table, patches, 0)
             patch_type = int.from_bytes(patch_type_bytes, 'little')
             if patch_type != PATCH_TYPE:
-                print("Invalid patch identifier: %#010x" % (patch_type),
-                      file=sys.stderr)
+                err("Invalid patch identifier: %#010x" % (patch_type),
+                    ucode_file, cursor)
                 return (None, table, patches, errno.EINVAL)
 
             patch_length = read_int32(ucode_file)
@@ -410,9 +425,9 @@ def parse_ucode_file(opts, path, start_offset):
                                     "microcode patch section"):
                 return (None, table, patches, errno.EINVAL)
             if patch_length < PATCH_HEADER_SIZE:
-                print(("ERROR: patch is too short (at least %d bytes " +
-                       "expected, got %d), skipping") %
-                      (PATCH_HEADER_SIZE, patch_length), file=sys.stderr)
+                err(("Patch is too short (at least %d bytes expected, " +
+                     "got %d), skipping") % (PATCH_HEADER_SIZE, patch_length),
+                    ucode_file, cursor + 4)
 
                 cursor = cursor + SECTION_HDR_SIZE + patch_length
                 continue
@@ -459,8 +474,8 @@ def parse_ucode_file(opts, path, start_offset):
                 add_info = ""
 
             if equiv_id not in ids:
-                print(("Patch equivalence id not present in equivalence" +
-                       " table (%#06x)") % (equiv_id), file=sys.stderr)
+                warn(("Patch equivalence id not present in equivalence" +
+                      " table (%#06x)") % (equiv_id), ucode_file, cursor)
                 print(("  Family=???? Model=???? Stepping=????: " +
                        "Patch=%#010x Length=%u bytes%s")
                       % (ucode_level, patch_length, add_info))
@@ -550,8 +565,7 @@ def parse_options():
         if not os.path.isfile(f):
             parser.print_help(file=sys.stderr)
             print(file=sys.stderr)
-            print("ERROR: Container file \"%s\" does not exist" % f,
-                  file=sys.stderr)
+            err("Container file \"%s\" does not exist" % f)
             sys.exit(errno.ENOENT)
 
     return opts
