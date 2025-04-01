@@ -98,6 +98,16 @@ def parse_equiv_table(opts, ucode_file, start_offset, eq_table_len):
     table_stop = start_offset + EQ_TABLE_OFFSET + eq_table_len
 
     while table_item < table_stop:
+        # Linux microcode loader ignores incomplete equivalence table entries,
+        # and trying to parse them would yield garbage anyway
+        rem = table_stop - table_item
+        if rem < EQ_TABLE_ENTRY_SIZE:
+            warn(("The remainder of the equivalence table section " +
+                  "(%d byte%s) is not big enough to accommodate " +
+                  "an equalence table entry, ignoring it") %
+                 (rem, "" if rem == 1 else "s"), ucode_file, table_item)
+            break
+
         ucode_file.seek(table_item, io.SEEK_SET)
         data = ucode_file.read(EQ_TABLE_ENTRY_SIZE)
         ucode_file.seek(table_item, io.SEEK_SET)
