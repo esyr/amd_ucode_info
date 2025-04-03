@@ -1,0 +1,6 @@
+Microcode patches in container:
+ [equiv entry@0x0000000c: cpuid 0x00000000, equiv id 0x0000, errata mask 0x00000000, errata compare 0x00000000, res 0x0000]
+  Family=???? Model=???? Stepping=????: Patch=0x1a2b3c4d Length=64 bytes Start=36 bytes Date=3c4d-1a-2b Equiv_id=0x3c4d
+   [data_code=0x1a2b3c4d, mc_patch_data_id=0x3c4d, mc_patch_data_len=0x2b, init_flag=0x1a, mc_patch_data_checksum=0x1a2b3c4d]
+   [nb_dev_id=0x1a2b3c4d, sb_dev_id=0x1a2b3c4d, nb_rev_id=0x2b, sb_rev_id=0x1a, bios_api_rev=0x4d, reserved=[0x3c, 0x2b, 0x1a]]
+   [match_reg=[0x1a2b3c4d, 0x1a2b3c4d, 0x1a2b3c4d, 0x1a2b3c4d, 0x1a2b3c4d, 0x1a2b3c4d, 0x1a2b3c4d, 0x1a2b3c4d]]

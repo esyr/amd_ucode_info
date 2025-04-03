@@ -1,0 +1,2 @@
+Microcode patches in container:
+  Family=0x00 Model=0x00 Stepping=0x00: Patch=0xbadc0ded Length=64 bytes Start=52 bytes Date=2002-07-19 Equiv_id=0xdead

@@ -1,0 +1,4 @@
+Microcode patches in container:
+ [equiv entry@0x0000000c: cpuid 0x00000000, equiv id 0x0000, errata mask 0x00000000, errata compare 0x00000000, res 0x0000]
+Microcode patches in container+0x1c:
+ [equiv entry@0x00000028: cpuid 0x00000000, equiv id 0x0000, errata mask 0x00000000, errata compare 0x00000000, res 0x0000]

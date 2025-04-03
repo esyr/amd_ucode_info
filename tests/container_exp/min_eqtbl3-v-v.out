@@ -1,0 +1,2 @@
+Microcode patches in container:
+ [equiv entry@0x0000000c: cpuid 0xdeadbeef, equiv id 0x1e55, errata mask 0xfeedcafe, errata compare 0xbadc0ded, res 0xface]
