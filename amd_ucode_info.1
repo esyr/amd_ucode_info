@@ -1,0 +1,373 @@
+.\" Copyright (C) 2025 amd_ucode_info developers
+.\" SPDX-License-Identifier: MIT License
+.\"
+.de CW
+.sp
+.in +4n
+.nf
+.ft CW
+..
+.de CE
+.ft R
+.fi
+.in
+.sp
+..
+.\" Like .OP, but with ellipsis at the end in order to signify that option
+.\" can be provided multiple times. Based on .OP definition in groff's
+.\" an-ext.tmac.
+.de OM
+.  ie \\n(.$-1 \
+.    RI "[\fB\\$1\fP" "\ \\$2" "]...\&"
+.  el \
+.    RB "[" "\\$1" "]...\&"
+..
+.TH AMD_UCODE_INFO 1 2025-02-11
+.SH NAME
+amd_ucode_info \- tool to manipulate AMD CPU microcode container files
+.SH SYNOPSIS
+.SY amd_ucode_info
+.OP -h
+.OP -e EXTRACT
+.OP -s SPLIT
+.OP -m MERGE
+.OM -v
+.IB container_file ...
+.YS
+.SH DESCRIPTION
+.B amd_ucode_info
+parses the specified
+.IR container_file s
+and possibly performs additional actions in accordance with the options
+specified.
+If a
+.I container_file
+is a valid AMD x86 CPU family 10h+ microcode container,
+the information about its contents is printed.
+If multiple
+.IR container_file s
+are provided, they are processed in the order
+of their appearance in the command line arguments.
+If a
+.IR container_file
+is not recognised as a valid AMD CPU microcode container file, a diagnostics
+message is printed.
+An example of
+.B amd_ucode_info
+usage:
+.CW
+$ amd_ucode_info /lib/firmware/amd-ucode/microcode_amd_fam1[67]h.bin*
+Microcode patches in /lib/firmware/amd-ucode/microcode_amd_fam16h.bin:
+  Family=0x16 Model=0x00 Stepping=0x01: Patch=0x0700010f Length=3458 bytes
+Microcode patches in /lib/firmware/amd-ucode/microcode_amd_fam16h.bin.asc:
+ERROR: Missing magic number at beginning of container
+Microcode patches in /lib/firmware/amd-ucode/microcode_amd_fam17h.bin:
+  Family=0x17 Model=0x01 Stepping=0x02: Patch=0x08001250 Length=3200 bytes
+  Family=0x17 Model=0x08 Stepping=0x02: Patch=0x0800820d Length=3200 bytes
+Microcode patches in /lib/firmware/amd-ucode/microcode_amd_fam17h.bin.asc:
+ERROR: Missing magic number at beginning of container
+.CE
+Information about specific microcode patches is displayed in the order
+of their placement inside the container file.
+.PP
+.B \-v
+option can be used to display additional information about the microcode
+in the container:
+.CW
+$ amd_ucode_info -v /lib/firmware/amd-ucode/microcode_amd.bin | head -n 10
+Microcode patches in /lib/firmware/amd-ucode/microcode_amd.bin:
+  Family=0x10 Model=0x02 Stepping=0x03: Patch=0x01000083 Length=960 bytes Start=308 bytes Date=2008-04-30 Equiv_id=0x1022
+  Family=0x10 Model=0x02 Stepping=0x02: Patch=0x01000083 Length=960 bytes Start=308 bytes Date=2008-04-30 Equiv_id=0x1022
+  Family=0x10 Model=0x02 Stepping=0x0a: Patch=0x01000084 Length=960 bytes Start=1276 bytes Date=2008-05-01 Equiv_id=0x1020
+  Family=0x10 Model=0x06 Stepping=0x02: Patch=0x010000c7 Length=960 bytes Start=2244 bytes Date=2010-03-11 Equiv_id=0x1062
+  Family=0x10 Model=0x04 Stepping=0x03: Patch=0x010000c8 Length=960 bytes Start=3212 bytes Date=2010-03-11 Equiv_id=0x1043
+  Family=0x10 Model=0x06 Stepping=0x03: Patch=0x010000c8 Length=960 bytes Start=3212 bytes Date=2010-03-11 Equiv_id=0x1043
+  Family=0x10 Model=0x05 Stepping=0x03: Patch=0x010000c8 Length=960 bytes Start=3212 bytes Date=2010-03-11 Equiv_id=0x1043
+  Family=0x10 Model=0x08 Stepping=0x01: Patch=0x010000d9 Length=960 bytes Start=4180 bytes Date=2011-10-12 Equiv_id=0x1081
+  Family=0x10 Model=0x09 Stepping=0x01: Patch=0x010000d9 Length=960 bytes Start=4180 bytes Date=2011-10-12 Equiv_id=0x1081
+.CE
+Here, one can notice that some microcode patches
+(such as those with
+.B Equiv_id
+value of
+.BR 0x1043 " or " 0x1081 )
+are used for multiple CPU models.
+.PP
+It is also possible to extract specific patches from the microcode container;
+two options are provided in order to facilitate such task:
+.BR \-\-extract " (or its shorthand, " -e )
+dumps the data of each of the microcode patches
+(without a container header and the equivalence table)
+into a separate file inside a specified directory, and
+.BR \-\-split " (or its shorthand, " -s )
+splits the container into several, each containing a single patch
+with the relevant equivalence table.
+Another option,
+.BR \-\-merge " (or " \-m ),
+performs the inverse of splitting the container:
+provided several containers as inputs,
+it outputs a single container with merged equivalence table and patch sections.
+.SH OPTIONS
+.TP
+.B \-h
+.TQ
+.B \-\-help
+Print usage information and exit.
+.TP
+.BI "\-e " EXTRACT
+.TQ
+.BI "\-\-extract " EXTRACT
+Dump each patch in container to the specified directory.
+.TP
+.BI "\-s " SPLIT
+.TQ
+.BI "\-\-split " SPLIT
+Split out each patch in a separate container to the specified directory.
+.TP
+.BI "\-m " MERGE
+.TQ
+.BI "\-\-merge " MERGE
+Write a merged container to the specified file.
+.TP
+.B \-v
+.TQ
+.B \-\-verbose
+Increase verbosity of the output.
+Single usage causes
+.B amd_ucode_info
+to print information about the starting offset, date,
+and equivalence ID of each microcode patch.
+With the second inclusion of the option, all the information contained
+in equivalence table entries and microcode patch headers is printed.
+.SH "EXIT STATUS"
+.TP
+.B 0
+No issues occurred.
+.TP
+.B 2
+One of the input files does not exist or is not a regular file.
+.TP
+.B 22
+An error has occurred while parsing one of the input files.
+.SH AMD CPU MICROCODE CONTAINER FORMAT OVERVIEW
+.\" Based largely on the following sources:
+.\" https://xenbits.xen.org/docs/unstable/misc/amd-ucode-container.txt
+.\" arch/x86/kernel/cpu/microcode/amd.c in the Linux source tree
+.\" src/tree/sys/x86/x86/ucode_subr.c in the FreeBSD source tree
+.\" usr/src/uts/intel/os/microcode_amd.c in the Illumos source tree
+This section provides a cursory overview of the format of microcode container
+files used for distributing microcode updates for AMD x86 CPU families 10h
+and higher
+(microcode update files for AMD x86 CPU families 0Fh ("K8") and earlier employed
+a different format, which is not covered here).
+Each container file is interpreted as a concatenation
+of AMD microcode containers;
+all the data in the containers is treated as little-endian.
+Container starts with a 4-byte magic:
+.BR 0x44 ", " 0x4d ", " 0x41 ", " 0x00
+(sometimes referred to by its 32-bit number representation,
+.BR 0x00414d44 ,
+or the string one,
+.RB \[dq] DMA\[rs]0 \[dq]);
+after that, a set of sections is expected,
+each beginning with an 8-byte header,
+containing its type (a 4-byte value),
+and (also a 4-byte) size in bytes (sans the section header).
+.PP
+The first section that is expected right after the container magic
+is an "equivalence table" section, that matches CPU signatures with patches.
+It has the type of
+.B 0x00000000
+and contains a set of equivalence table records,
+with each having the following format:
+.PP
+.in +4n
+.EX
+struct equiv_cpu_entry {
+    uint32_t installed_cpu;
+    uint32_t fixed_errata_mask;
+    uint32_t fixed_errata_compare;
+    uint16_t equiv_cpu;
+    uint16_t res;
+};
+.EE
+.in
+.PP
+.B installed_cpu
+is a CPU signature (as provided in leaf 1 of the CPUID instruction)
+that a microcode update with equivalence ID
+.B equiv_id
+is for.
+In case of multiple entries with the same
+.B installed_cpu
+value, publicly implemented microcode loaders use the
+.B equiv_id
+value of the first matching record.
+The values of
+.BR fixed_errata_mask ", " fixed_errata_compare ", and " res
+fields are ignored by public microcode loader implementations,
+and most of publicly available microcode containers contain zeroes there.
+The last entry in the equivalence table is expected to contain all zeroes.
+.PP
+.\" https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=94838d230a6c835c
+Note that Linux microcode loader since commit v6.12-rc1~228^2~1 (July 2024)
+ignores the contents (and does not check for correctness)
+of the equivalence table,
+when is run on AMD x86 CPUs with CPU family 17h and higher,
+and instead uses microcode patch ID (see below)
+for determining CPUID to which the microcode is applicable.
+.PP
+After the equivalence table section, a sequence of patch sections follows,
+each having the type of
+.BR 0x00000001 .
+Each patch is preambled with a patch header,
+that is usually defined as follows:
+.PP
+.in +4n
+.EX
+struct microcode_header_amd {
+    uint32_t data_code;
+    uint32_t patch_id;
+    uint16_t mc_patch_data_id;
+    uint8_t  mc_patch_data_len;
+    uint8_t  init_flag;
+    uint32_t mc_patch_data_checksum;
+    uint32_t nb_dev_id;
+    uint32_t sb_dev_id;
+    uint16_t processor_rev_id;
+    uint8_t  nb_rev_id;
+    uint8_t  sb_rev_id;
+    uint8_t  bios_api_rev;
+    uint8_t  reserved1[3];
+    uint32_t match_reg[8];
+};
+.EE
+.in
+.PP
+The
+.B data_code
+field contains the patch date, in
+.B 0xMMDDYYYY
+binary-coded decimal format, so
+.B 0x03141592
+encodes the day of 1592-03-14 (in ISO 8601 notation).
+.PP
+The
+.B patch_id
+field contains the microcode revision ID.
+On AMD x86 CPU families 17h and newer (Zen 1 onwards),
+it also encodes information about the CPUID and family
+to which the microcode is applicable, in the following format:
+.PP
+.in +4n
+.EX
+struct {
+    uint32_t rev        : 8,
+             stepping   : 4,
+             model      : 4,
+             __reserved : 4,
+             ext_model  : 4,
+             ext_fam    : 8;
+};
+.EE
+.in
+.PP
+.B rev
+is the microcode revision ID, and
+.BR stepping ", " model ", " ext_model ", and " ext_fam
+correspond to the analogous fields in the CPU signature:
+.PP
+.in +4n
+.EX
+struct {
+    uint32_t stepping    : 4,
+             model       : 4,
+             family      : 4,
+             __reserved1 : 4,
+             ext_model   : 4,
+             ext_fam     : 8,
+             __reserved2 : 4;
+};
+.EE
+.in
+.PP
+The
+.B family
+field for x86 CPU families greater or equal than 10h is always equal to
+.BR 0xf ,
+and the CPU family is calculated as a sum of
+.BR ext_fam " and " family
+field values,
+due to the ways older versions of Windows performed CPU compatibility checks.
+For example, microcode revision ID
+.B 0x0a601209
+is microcode revision
+.B 0x09
+for CPU signature
+.BR 0x00a60f12 ": family " 0x19 " (" 0xa " + " 0xf "), model " 0x61 ,
+.RB "stepping " 0x2 .
+.PP
+The
+.B mc_patch_data_id
+is the internal patch data format ID, which is ignored
+by publicly implemented microcode loaders,
+along with
+.BR mc_patch_data_len " and " init_flag
+fields.
+.\" Notes on the way len/init are interpreted:
+.\" id 0x8000, 0x8003 - len is the number of 28-byte chunks, sans the header
+.\" (0x10 in 512-byte patches, 0x20 in 960-byte ones)
+.\" id 0x8005, 0x8010, 0x8015 - init.len are a 16-bit number,
+.\" size in 16-byte chunks, including the header
+.\" (0x015c in 5568-byte patches, 0x0382 for for 14368-byte ones)
+The
+.B mc_patch_data_checksum
+is a sum (modulo 2^32) of all the 32-bit words of the patch data
+(the remainder of the section after the patch header),
+that is used only in older patch data formats with IDs
+.BR 0x8000 " and " 0x8003 .
+.PP
+The
+.BR nb_dev_id " and " nb_rev_id
+indicate that the microcode patch is intended for systems
+with the specified north bridge PCI vendor/device ID and revision;
+similarly,
+.BR sb_dev_id " and " sb_rev_id
+provide south bridge vendor/device ID specification.
+Most publicly implemented microcode loaders ignore microcode patches
+with non-zero
+.BR nb_dev_id " or " sb_dev_id
+field values.
+.PP
+The
+.B processor_rev_id
+is the equivalence ID, the same as the
+.B equiv_cpu
+value in the equivalence table.
+.\" TODO: Mention the "Don't even think about loading patches
+.\"       that would require code execution" note in the Illumos implementation?
+.PP
+.BR bios_api_rev ", " reserved1 ", and " match_reg
+fields are undocumented and their contents are ignored by publicly implemented
+microcode loaders.
+.PP
+Some microcode loaders support the notion of concatenated containers,
+that is, several containers concatenated into a single file;
+the beginning of the next container is recognised by the presence
+of the container magic in place of microcode patch section type,
+that would otherwise indicate the start of the next microcode patch section.
+.SH "REPORTING BUGS"
+Problems with
+.B amd_ucode_info
+can be reported to
+.UR https://github.com/AMDESE/amd_ucode_info/issues
+.B amd_ucode_info
+issue tracker
+.UE .
+.SH "SEE ALSO"
+.BR iucode_tool (8)
+.PP
+.UR https://github.com/AMDESE/amd_ucode_info
+.B amd_ucode_info
+repository
+.UE .
