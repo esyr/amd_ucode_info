@@ -11,8 +11,8 @@ raw microcode patches to a provided directory.
 import argparse
 import errno
 import io
-import sys
 import os
+import sys
 
 from collections import namedtuple
 from collections import OrderedDict
