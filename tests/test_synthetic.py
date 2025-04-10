@@ -121,18 +121,18 @@ TEST_DATA = {
                     u32(0xbadc0ded), u32(0xface1e55), u32(0) * 4),
                    0, True,
                    ("container+0x001c: WARNING: Duplicate CPUID 0xdeadbeef " +
-                    "(Family=0xf8 Model=0xde Stepping=0x0f) " +
-                    "in the equivalence table for equiv_id 0x1e55", "")),
+                    "(CPUID=0xdeadbeef) in the equivalence table " +
+                    "for equiv_id 0x1e55", "")),
     "eqtbl_dup2": ((MAGIC, EQTBL_SECTION_ID, u32(48),
-                    u32(0xdeadbeef), u32(0xfeedcafe),
+                    u32(0x0bad0fed), u32(0xfeedcafe),
                     u32(0xbadc0ded), u32(0xface1e55),
-                    u32(0xdeadbeef), u32(0xfeedcafe),
+                    u32(0x0bad0fed), u32(0xfeedcafe),
                     u32(0xbadc0ded), u32(0xdeefaced), u32(0) * 4),
                    0, True,
                    ("container+0x001c: WARNING: Different equiv_id's " +
                     "(0xaced and 0x1e55) are present in the equivalence " +
-                    "table for CPUID 0xdeadbeef (Family=0xf8 Model=0xde " +
-                    "Stepping=0x0f)", "")),
+                    "table for CPUID 0x0bad0fed (Family=0xc9 Model=0xde " +
+                    "Stepping=0x0d)", "")),
     "eqtbl_dup3": ((MAGIC, EQTBL_SECTION_ID, u32(48),
                     u32(0xdeadbeef), u32(0xfeedcafe),
                     u32(0xbadc0ded), u32(0xface1e55), u32(0) * 8),
@@ -143,9 +143,9 @@ TEST_DATA = {
                    0, True,
                    ("container+0x001c: WARNING: An equivalence table record " +
                     "with non-zero equiv_id (0x1e55) and CPUID 0xdeadbeef " +
-                    "(Family=0xf8 Model=0xde Stepping=0x0f) follows " +
-                    "a record with zero CPUID (at position 0xc), some " +
-                    "loader implementations may ignore it", "")),
+                    "(CPUID=0xdeadbeef) follows a record with zero CPUID " +
+                    "(at position 0xc), some loader implementations may " +
+                    "ignore it", "")),
     # Same equiv_id, different CPUIDs, nothing to report about
     "eqtbl_dup5": ((MAGIC, EQTBL_SECTION_ID, u32(48),
                     u32(0xdeadbeef), u32(0xfeedcafe),
@@ -215,6 +215,11 @@ TEST_DATA = {
                     PATCH_SECTION_ID, u32(64),
                     patch_hdr(0xbadc0ded, 0xdead, 0x07192002)),
                    0, True, ("",)),
+    "bad_cpuid": ((MAGIC, EQTBL_SECTION_ID, u32(32),
+                   eqtbl_item(0x1230456, 0xdead), u32(0) * 4,
+                   PATCH_SECTION_ID, u32(64),
+                   patch_hdr(0xfacefeed, 0xdead, 0x07192002)),
+                  0, True, ("",)),
     "min_concat": ((MAGIC, EQTBL_SECTION_ID, u32(16), u32(0) * 4,
                     MAGIC, EQTBL_SECTION_ID, u32(16), u32(0) * 4), 0, True,
                    ("",)),
@@ -231,7 +236,7 @@ TEST_DATA = {
     "concat_eqid2": ((MAGIC, EQTBL_SECTION_ID, u32(32),
                       eqtbl_item(0xbadc0ded, 0xcafe), u32(0) * 4,
                       MAGIC, EQTBL_SECTION_ID, u32(32),
-                      eqtbl_item(0xdeadbeef, 0xcafe), u32(0) * 4,
+                      eqtbl_item(0x1632, 0xcafe), u32(0) * 4,
                       PATCH_SECTION_ID, u32(64),
                       patch_hdr(0xface1e55, 0xcafe, 0x1011970)),
                      0, True, ("",)),

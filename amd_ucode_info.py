@@ -28,7 +28,8 @@ PATCH_HEADER_SIZE = 64  # sizeof(struct microcode_header_amd)
 
 VERBOSE_DEBUG = 2
 
-FMS = namedtuple("FMS", ("family", "model", "stepping"))
+FMS = namedtuple("FMS", ("family", "model", "stepping",
+                         "family_invalid", "reserved", "cpu_id"))
 EquivTableEntry = namedtuple("EquivTableEntry",
                              ("cpuid", "equiv_id", "data", "offset"))
 PatchEntry = namedtuple("PatchEntry",
@@ -68,20 +69,53 @@ def read_int8(ucode_file):
 
 
 def cpuid2fms(cpu_id):
-    family = (cpu_id >> 8) & 0xf
-    family += (cpu_id >> 20) & 0xff
+    """
+    Parses CPUID signature and converts it into FMS named tuple.
+
+    CPUID signature (EAX=1) has the following definition:
+     * bits 3..0:   Stepping
+     * bits 7..4:   Model
+     * bits 11..8:  Family
+     * bits 13..12: Processor type (used by some old Intel CPU models
+                    to indicate OverDrive or dual processor SKUs), not used
+                    in AMD x86 CPUs
+     * bits 15..14: Reserved
+     * bits 19..16: Extended model
+     * bits 27..20: Extended family
+     * bits 31..28: Reserved
+
+    The resulting family is calculated as the sum of extended family and family
+    field;  family field is supposed to be 0xf if the extended family field
+    value is non-zero.  Resulting model is calculated as concatenation
+    of extended model and model fields.
+
+    The function calculated the resulting family and model, along
+    with the indication if the family field follows the aforementioned
+    guideline and the contents of the reserved fields.
+    """
+    orig_family = (cpu_id >> 8) & 0xf
+    ext_family = (cpu_id >> 20) & 0xff
+    family = ext_family + orig_family
+    family_invalid = ext_family and (orig_family != 0xf)
 
     model = (cpu_id >> 4) & 0xf
     model |= (cpu_id >> 12) & 0xf0
 
     stepping = cpu_id & 0xf
 
-    return FMS(family, model, stepping)
+    reserved = cpu_id & 0xf000f000
+
+    return FMS(family, model, stepping, family_invalid, reserved, cpu_id)
 
 
 def fms2str(fms):
-    return "Family=%#04x Model=%#04x Stepping=%#04x" % \
-           (fms.family, fms.model, fms.stepping)
+    if fms.family_invalid or fms.reserved:
+        # If CPUID can't be uniquely reconstructed from family/model/stepping,
+        # just print it raw
+        return "CPUID=%#010x" % fms.cpu_id
+    else:
+        return "Family=%#04x Model=%#04x Stepping=%#04x" % \
+               (fms.family, fms.model, fms.stepping)
 
 
 def cpuid2str(cpu_id):

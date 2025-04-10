@@ -1,0 +1,2 @@
+Microcode patches in container:
+  CPUID=0x01230456: Patch=0xfacefeed Length=64 bytes
