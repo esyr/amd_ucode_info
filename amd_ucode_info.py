@@ -84,6 +84,10 @@ def fms2str(fms):
            (fms.family, fms.model, fms.stepping)
 
 
+def cpuid2str(cpu_id):
+    return fms2str(cpuid2fms(cpu_id))
+
+
 def parse_equiv_table(opts, ucode_file, start_offset, eq_table_len):
     """
     Read equivalence table and return a list of the equivalence ids contained
@@ -135,7 +139,7 @@ def parse_equiv_table(opts, ucode_file, start_offset, eq_table_len):
                       "equiv_id (%#06x) and CPUID %#010x (%s) follows " +
                       "a record with zero CPUID (at position %#x), some " +
                       "loader implementations may ignore it") %
-                     (equiv_id, cpu_id, fms2str(cpuid2fms(cpu_id)),
+                     (equiv_id, cpu_id, cpuid2str(cpu_id),
                       zero_cpuid_record), ucode_file, table_item)
 
             if equiv_id not in table:
@@ -144,7 +148,7 @@ def parse_equiv_table(opts, ucode_file, start_offset, eq_table_len):
             if cpu_id in table[equiv_id]:
                 warn(("Duplicate CPUID %#010x (%s) in the equivalence table " +
                       "for equiv_id %#06x") %
-                     (cpu_id, fms2str(cpuid2fms(cpu_id)), equiv_id),
+                     (cpu_id, cpuid2str(cpu_id), equiv_id),
                      ucode_file, table_item)
 
             if cpu_id in cpuid_map:
@@ -153,7 +157,7 @@ def parse_equiv_table(opts, ucode_file, start_offset, eq_table_len):
                           "are present in the equivalence table for CPUID " +
                           "%#010x (%s)") %
                          (equiv_id, cpuid_map[cpu_id], cpu_id,
-                          fms2str(cpuid2fms(cpu_id))), ucode_file, table_item)
+                          cpuid2str(cpu_id)), ucode_file, table_item)
             else:
                 cpuid_map[cpu_id] = equiv_id
 
@@ -258,8 +262,7 @@ def merge_mc(opts, out_path, table, patches):
         if entry.cpuid in equivid_map[entry.equiv_id]:
             warn(("Duplicate CPUID %#010x (%s) in the equivalence table " +
                   "for equiv_id %#06x ") %
-                 (entry.cpuid, fms2str(cpuid2fms(entry.cpuid)),
-                  entry.equiv_id))
+                 (entry.cpuid, cpuid2str(entry.cpuid), entry.equiv_id))
         else:
             equivid_map[entry.equiv_id][entry.cpuid] = entry
 
@@ -268,7 +271,7 @@ def merge_mc(opts, out_path, table, patches):
                 warn(("Different equiv_id's (%#06x and %#06x) are present " +
                       "in the equivalence table for CPUID %#010x (%s)") %
                      (entry.equiv_id, cpuid_map[entry.cpuid], entry.cpuid,
-                      fms2str(cpuid2fms(entry.cpuid))))
+                      cpuid2str(entry.cpuid)))
             else:
                 cpuid_map[entry.cpuid] = entry.equiv_id
 
@@ -493,8 +496,8 @@ def parse_ucode_file(opts, path, start_offset):
                 # The cpu_id is the equivalent to CPUID_Fn00000001_EAX
                 for cpuid in ids[equiv_id]:
                     print("  %s: Patch=%#010x Length=%u bytes%s"
-                          % (fms2str(cpuid2fms(cpuid)), ucode_level,
-                             patch_length, add_info))
+                          % (cpuid2str(cpuid), ucode_level, patch_length,
+                             add_info))
 
             if opts.verbose >= VERBOSE_DEBUG:
                 print(("   [data_code=%#010x, mc_patch_data_id=%#06x, " +
