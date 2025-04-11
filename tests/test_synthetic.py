@@ -196,7 +196,9 @@ TEST_DATA = {
     "no_eqid": ((MAGIC, EQTBL_SECTION_ID, u32(16), u32(0) * 4,
                  PATCH_SECTION_ID, u32(64), u32(0x1a2b3c4d) * 16),
                 0, True,
-                ("container+0x001c: WARNING: Patch equivalence id " +
+                ("container+0x001c: WARNING: Reserved field (0xb) " +
+                 "in the family 17h+ patch level (0x1a2b3c4d) is not zero",
+                 "container+0x001c: WARNING: Patch equivalence id " +
                  "not present in equivalence table (0x3c4d)", "")),
     "zero_eqid": ((MAGIC, EQTBL_SECTION_ID, u32(32),
                    u32(0xdeadbeef), u32(0xfeedcafe),
@@ -208,18 +210,35 @@ TEST_DATA = {
                    u8(0x23), u8(0x69), u8(0xae),
                    u8(0x55) * 3, u32(0x8091a2b3) * 8, u32(0xc0deda7a)),
                   0, True,
-                  ("container+0x002c: WARNING: Patch equivalence id " +
+                  ("container+0x002c: WARNING: Reserved field (0xb) " +
+                   "in the family 17h+ patch level (0x89abcdef) is not zero",
+                   "container+0x002c: WARNING: Patch equivalence id " +
                    "not present in equivalence table (0x0000)", "")),
     "zero_cpuid": ((MAGIC, EQTBL_SECTION_ID, u32(32),
                     eqtbl_item(0x00000000, 0xdead), u32(0) * 4,
                     PATCH_SECTION_ID, u32(64),
                     patch_hdr(0xbadc0ded, 0xdead, 0x07192002)),
-                   0, True, ("",)),
+                   0, True,
+                   ("container+0x002c: WARNING: Reserved field (0xc) " +
+                    "in the family 17h+ patch level (0xbadc0ded) is not zero",
+                    "")),
+    "miss_cpuid": ((MAGIC, EQTBL_SECTION_ID, u32(32),
+                    eqtbl_item(0x00780fab, 0xdead), u32(0) * 4,
+                    PATCH_SECTION_ID, u32(64),
+                    patch_hdr(0x0ab0cdef, 0xdead, 0x04052063)),
+                   0, True,
+                   ("container+0x002c: WARNING: CPUID decoded " +
+                    "from the microcode patch header (Family=0x19 " +
+                    "Model=0xbc Stepping=0x0d) is not present " +
+                    "in the equivalence table", "")),
     "bad_cpuid": ((MAGIC, EQTBL_SECTION_ID, u32(32),
                    eqtbl_item(0x1230456, 0xdead), u32(0) * 4,
                    PATCH_SECTION_ID, u32(64),
                    patch_hdr(0xfacefeed, 0xdead, 0x07192002)),
-                  0, True, ("",)),
+                  0, True,
+                  ("container+0x002c: WARNING: Reserved field (0xe) " +
+                   "in the family 17h+ patch level (0xfacefeed) is not zero",
+                   "")),
     "min_concat": ((MAGIC, EQTBL_SECTION_ID, u32(16), u32(0) * 4,
                     MAGIC, EQTBL_SECTION_ID, u32(16), u32(0) * 4), 0, True,
                    ("",)),
@@ -231,7 +250,10 @@ TEST_DATA = {
                       patch_hdr(0xbadc0ded, 0xcafe, 0x31415926,
                                 match_reg=(0x5a5a5a5a,)*8)),
                      0, True,
-                     ("container+0x0048: WARNING: Patch equivalence id " +
+                     ("container+0x0048: WARNING: Reserved field (0xc) " +
+                      "in the family 17h+ patch level (0xbadc0ded) " +
+                      "is not zero",
+                      "container+0x0048: WARNING: Patch equivalence id " +
                       "not present in equivalence table (0xcafe)", "")),
     "concat_eqid2": ((MAGIC, EQTBL_SECTION_ID, u32(32),
                       eqtbl_item(0xbadc0ded, 0xcafe), u32(0) * 4,
@@ -239,7 +261,10 @@ TEST_DATA = {
                       eqtbl_item(0x1632, 0xcafe), u32(0) * 4,
                       PATCH_SECTION_ID, u32(64),
                       patch_hdr(0xface1e55, 0xcafe, 0x1011970)),
-                     0, True, ("",)),
+                     0, True,
+                     ("container+0x0058: WARNING: Reserved field (0xe) " +
+                      "in the family 17h+ patch level (0xface1e55) " +
+                      "is not zero", "")),
 }
 TESTS = TEST_DATA.keys()
 

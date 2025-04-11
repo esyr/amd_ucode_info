@@ -1,0 +1,2 @@
+Microcode patches in container:
+  Family=0x16 Model=0x8a Stepping=0x0b: Patch=0x0ab0cdef Length=64 bytes

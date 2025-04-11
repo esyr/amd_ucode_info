@@ -122,6 +122,59 @@ def cpuid2str(cpu_id):
     return fms2str(cpuid2fms(cpu_id))
 
 
+def fms_from_lvl_eqid(lvl, eqid, f, pos):
+    """
+    Try to reconstruct CPUID from the information present in microcode patch
+    leveland equivalence ID fields.
+    """
+    ext_fam = (lvl >> 24) & 0xff
+
+    if ext_fam >= 0x8:
+        """
+        For the family 17h (Zen) and higher we can rely solely
+        on the information in the microcode patch level:  per Linux commit
+        v6.12-rc1~228^2~1, the patch level there has the following schema:
+        struct {
+            u32 rev        : 8,
+                stepping   : 4,
+                model      : 4,
+                __reserved : 4,
+                ext_model  : 4,
+                ext_fam    : 8;
+        };
+        """
+        ext_model = (lvl >> 20) & 0xf
+        reserved = (lvl >> 16) & 0xf
+        model = (lvl >> 12) & 0xf
+        stepping = (lvl >> 8) & 0xf
+
+        if reserved:
+            warn(("Reserved field (%#03x) in the family 17h+ patch level " +
+                  "(%#010x) is not zero") % (reserved, lvl), f, pos)
+            return None
+    elif ext_fam >= 0x1:
+        # For families 10h..16h we try to use equivalence ID,
+        # but this may be imprecise;  all the publicly available microcode
+        # containers seem to have at least the CPUID obtained
+        # from reconstructing it from the equiv_id, however.
+        eqid_ext_fam = (eqid >> 12) & 0xf
+        ext_model = (eqid >> 8) & 0xf
+        model = (eqid >> 4) & 0xf
+        stepping = eqid & 0xf
+
+        if ext_fam != eqid_ext_fam:
+            warn(("Discrepancy in the extended family value between " +
+                  "the patch level (%#04x in %#010x) and equivalence ID " +
+                  "(%#03x in %#06x)") % (ext_fam, lvl, eqid_ext_fam, eqid),
+                 f, pos)
+            return None
+    else:
+        return None
+
+    return FMS(ext_fam + 0xf, ext_model << 4 | model, stepping, False, 0,
+               ext_fam << 20 | ext_model << 16 | 0xf00 | model << 4 | stepping)
+
+
 def parse_equiv_table(opts, ucode_file, start_offset, eq_table_len):
     """
     Read equivalence table and return a list of the equivalence ids contained
@@ -520,18 +573,33 @@ def parse_ucode_file(opts, path, start_offset):
             else:
                 add_info = ""
 
+            patch_fms = fms_from_lvl_eqid(ucode_level, equiv_id,
+                                          ucode_file, cursor)
+
             if equiv_id not in ids:
                 warn(("Patch equivalence id not present in equivalence" +
                       " table (%#06x)") % (equiv_id), ucode_file, cursor)
-                print(("  Family=???? Model=???? Stepping=????: " +
-                       "Patch=%#010x Length=%u bytes%s")
-                      % (ucode_level, patch_length, add_info))
+                if patch_fms is None:
+                    print(("  Family=???? Model=???? Stepping=????: " +
+                           "Patch=%#010x Length=%u bytes%s")
+                          % (ucode_level, patch_length, add_info))
+                else:
+                    print("  %s: Patch=%#010x Length=%u bytes%s"
+                          % (fms2str(patch_fms), ucode_level, patch_length,
+                             add_info))
             else:
+                cpuid_match = patch_fms is None
                 # The cpu_id is the equivalent to CPUID_Fn00000001_EAX
                 for cpuid in ids[equiv_id]:
+                    if not cpuid_match and cpuid == patch_fms.cpu_id:
+                        cpuid_match = True
                     print("  %s: Patch=%#010x Length=%u bytes%s"
                           % (cpuid2str(cpuid), ucode_level, patch_length,
                              add_info))
+                if not cpuid_match and patch_fms.family >= 0x17:
+                    warn(("CPUID decoded from the microcode patch header " +
+                          "(%s) is not present in the equivalence table")
+                         % fms2str(patch_fms), ucode_file, cursor)
 
             if opts.verbose >= VERBOSE_DEBUG:
                 print(("   [data_code=%#010x, mc_patch_data_id=%#06x, " +
