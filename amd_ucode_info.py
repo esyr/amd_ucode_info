@@ -635,7 +635,7 @@ def write_mc(opts, out_file, patches, ucode_file=None, equiv_table=None):
             in_file.close()
 
 
-def parse_ucode_file(opts, path, start_offset):
+def parse_ucode_file(opts, path, start_offset, raw):
     """
     Scan through microcode container file printing the microcode patch level
     for each model contained in the file.
@@ -684,15 +684,18 @@ def parse_ucode_file(opts, path, start_offset):
         # Seek to end of file to determine file size
         ucode_file.seek(0, io.SEEK_END)
         end_of_file = ucode_file.tell()
+        container = raw is False
         container_str = ""
 
-        # Check magic number
-        ucode_file.seek(start_offset, io.SEEK_SET)
-        if not check_bytes_left(ucode_file, MAGIC_SIZE, "container magic"):
-            return (None, None, None, errno.EINVAL)
-        file_magic = ucode_file.read(MAGIC_SIZE)
-        if file_magic != b'DMA\x00':
-            if start_offset != 0:
+        if raw is not True:
+            # Check magic number
+            ucode_file.seek(start_offset, io.SEEK_SET)
+            if not check_bytes_left(ucode_file, MAGIC_SIZE, "container magic"):
+                return (None, None, None, errno.EINVAL)
+            file_magic = ucode_file.read(MAGIC_SIZE)
+            if file_magic == b'DMA\x00':
+                container = True
+            elif raw is False or start_offset != 0:
                 err("Missing magic number at beginning of container",
                     ucode_file, start_offset)
                 return (None, None, None, errno.EINVAL)
@@ -703,13 +706,14 @@ def parse_ucode_file(opts, path, start_offset):
                     % (" (got magic %r, expected b'DMA\\x00')" % file_magic
                        if opts.verbose >= VERBOSE_DEBUG else "")
 
+        if not container:
             ucode_file.seek(0, io.SEEK_SET)
             if not check_bytes_left(ucode_file, PATCH_HEADER_SIZE,
                                     "patch header"):
                 return (None, None, None, errno.EINVAL)
 
             hdr, issues, issues_desc = detect_raw_patch(ucode_file)
-            if issues == RawPatchIssue.NONE:
+            if raw is True or issues == RawPatchIssue.NONE:
                 patch = parse_patch_hdr(hdr, ucode_file, 0, opts, {},
                                         0, end_of_file, True)
 
@@ -722,6 +726,8 @@ def parse_ucode_file(opts, path, start_offset):
                                     if opts.verbose >= VERBOSE_DEBUG else ""),
                     ucode_file)
                 return (None, None, None, errno.EINVAL)
+
+        ucode_file.seek(start_offset + MAGIC_SIZE, io.SEEK_SET)
 
         # Check the equivalence table type
         if not check_bytes_left(ucode_file, SECTION_HDR_SIZE,
@@ -800,10 +806,19 @@ def parse_ucode_files(opts):
     all_patches = []
     status = 0
 
-    for f in opts.container_file:
+    for f in opts.file:
+        raw = opts.raw
+        if f.startswith("raw:"):
+            f = f.removeprefix("raw:")
+            raw = True
+        elif f.startswith("container:"):
+            f = f.removeprefix("container:")
+            raw = False
+
         offset = 0
         while offset is not None:
-            offset, table, patches, error = parse_ucode_file(opts, f, offset)
+            offset, table, patches, error = parse_ucode_file(opts, f, offset,
+                                                             raw)
 
             # We update status with the first error occurred during
             # the processing, then preserve it
@@ -825,8 +840,19 @@ def parse_ucode_files(opts):
 def parse_options():
     """ Parse options """
     parser = argparse.ArgumentParser(description="Print information about" +
-                                                 " an amd-ucode container")
-    parser.add_argument("container_file", nargs='+')
+                                                 "AMD microcode containers " +
+                                                 "and patches")
+    parser.add_argument("file", nargs="+",
+                        help="Path to a file containing AMD microcode " +
+                             "containers or a raw patch.  Prefix with raw: " +
+                             "to force parsing as a raw file or container: " +
+                             "to force parsing as a container.")
+    parser.add_argument("-r", "--raw", action="store_const",
+                        const=True, default=None,
+                        help="Interpret files as raw patches")
+    parser.add_argument("-c", "--container", action="store_const",
+                        dest="raw", const=False,
+                        help="Interpret files as microcode containers")
     parser.add_argument("-e", "--extract",
                         help="Dump each patch in container to the specified" +
                              " directory")
@@ -841,7 +867,11 @@ def parse_options():
                              "twice to see all the information available")
     opts = parser.parse_args()
 
-    for f in opts.container_file:
+    for f in opts.file:
+        if f.startswith("raw:"):
+            f = f.removeprefix("raw:")
+        elif f.startswith("container:"):
+            f = f.removeprefix("container:")
         if not os.path.isfile(f):
             parser.print_help(file=sys.stderr)
             print(file=sys.stderr)
