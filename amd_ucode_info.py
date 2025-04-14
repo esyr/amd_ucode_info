@@ -221,6 +221,62 @@ def read_patch_hdr(f):
                        tuple(read_int32(f) for _ in range(8)))  # match_reg
 
 
+def parse_patch_hdr(hdr, ucode_file, cursor, opts, ids, start, length):
+    if opts.verbose:
+        add_info = (" Start=%u bytes Date=%04x-%02x-%02x" +
+                    " Equiv_id=%#06x") % \
+                   (start, hdr.data_code & 0xffff,
+                    hdr.data_code >> 24, (hdr.data_code >> 16) & 0xff,
+                    hdr.equiv_id)
+    else:
+        add_info = ""
+
+    patch_fms = fms_from_lvl_eqid(hdr.ucode_level, hdr.equiv_id,
+                                  ucode_file, cursor)
+
+    if hdr.equiv_id not in ids:
+        warn(("Patch equivalence id not present in equivalence" +
+              " table (%#06x)") % hdr.equiv_id, ucode_file, cursor)
+        if patch_fms is None:
+            print(("  Family=???? Model=???? Stepping=????: " +
+                   "Patch=%#010x Length=%u bytes%s")
+                  % (hdr.ucode_level, length, add_info))
+        else:
+            print("  %s: Patch=%#010x Length=%u bytes%s"
+                  % (fms2str(patch_fms), hdr.ucode_level, length, add_info))
+    else:
+        cpuid_match = patch_fms is None
+        # The cpu_id is the equivalent to CPUID_Fn00000001_EAX
+        for cpuid in ids[hdr.equiv_id]:
+            if not cpuid_match and cpuid == patch_fms.cpu_id:
+                cpuid_match = True
+            print("  %s: Patch=%#010x Length=%u bytes%s"
+                  % (cpuid2str(cpuid), hdr.ucode_level, length, add_info))
+        if not cpuid_match and patch_fms.family >= 0x17:
+            warn(("CPUID decoded from the microcode patch header " +
+                  "(%s) is not present in the equivalence table")
+                 % fms2str(patch_fms), ucode_file, cursor)
+
+    if opts.verbose >= VERBOSE_DEBUG:
+        print(("   [data_code=%#010x, mc_patch_data_id=%#06x, " +
+               "mc_patch_data_len=%#04x, init_flag=%#04x, " +
+               "mc_patch_data_checksum=%#010x]") %
+              (hdr.data_code, hdr.mc_patch_data_id,
+               hdr.mc_patch_data_len, hdr.init_flag,
+               hdr.mc_patch_data_checksum))
+        print(("   [nb_dev_id=%#010x, sb_dev_id=%#010x, " +
+               "nb_rev_id=%#04x, sb_rev_id=%#04x, " +
+               "bios_api_rev=%#04x, reserved=[%#04x, %#04x, %#04x]]") %
+              (hdr.nb_dev_id, hdr.sb_dev_id, hdr.nb_rev_id,
+               hdr.sb_rev_id, hdr.bios_api_rev,
+               hdr.reserved[0], hdr.reserved[1], hdr.reserved[2]))
+        print("   [match_reg=[%s]]" %
+              ", ".join(["%#010x" % x for x in hdr.match_reg]))
+
+    return PatchEntry(ucode_file.name, start, length,
+                      hdr.equiv_id, hdr.ucode_level)
+
+
 def parse_equiv_table(opts, ucode_file, start_offset, eq_table_len):
     """
     Read equivalence table and return a list of the equivalence ids contained
@@ -580,61 +636,9 @@ def parse_ucode_file(opts, path, start_offset):
 
             hdr = read_patch_hdr(ucode_file)
 
-            if opts.verbose:
-                add_info = (" Start=%u bytes Date=%04x-%02x-%02x" +
-                            " Equiv_id=%#06x") % \
-                           (patch_start, hdr.data_code & 0xffff,
-                            hdr.data_code >> 24, (hdr.data_code >> 16) & 0xff,
-                            hdr.equiv_id)
-            else:
-                add_info = ""
+            patch = parse_patch_hdr(hdr, ucode_file, cursor, opts, ids,
+                                    patch_start, patch_length)
 
-            patch_fms = fms_from_lvl_eqid(hdr.ucode_level, hdr.equiv_id,
-                                          ucode_file, cursor)
-
-            if hdr.equiv_id not in ids:
-                warn(("Patch equivalence id not present in equivalence" +
-                      " table (%#06x)") % hdr.equiv_id, ucode_file, cursor)
-                if patch_fms is None:
-                    print(("  Family=???? Model=???? Stepping=????: " +
-                           "Patch=%#010x Length=%u bytes%s")
-                          % (hdr.ucode_level, patch_length, add_info))
-                else:
-                    print("  %s: Patch=%#010x Length=%u bytes%s"
-                          % (fms2str(patch_fms), hdr.ucode_level, patch_length,
-                             add_info))
-            else:
-                cpuid_match = patch_fms is None
-                # The cpu_id is the equivalent to CPUID_Fn00000001_EAX
-                for cpuid in ids[hdr.equiv_id]:
-                    if not cpuid_match and cpuid == patch_fms.cpu_id:
-                        cpuid_match = True
-                    print("  %s: Patch=%#010x Length=%u bytes%s"
-                          % (cpuid2str(cpuid), hdr.ucode_level, patch_length,
-                             add_info))
-                if not cpuid_match and patch_fms.family >= 0x17:
-                    warn(("CPUID decoded from the microcode patch header " +
-                          "(%s) is not present in the equivalence table")
-                         % fms2str(patch_fms), ucode_file, cursor)
-
-            if opts.verbose >= VERBOSE_DEBUG:
-                print(("   [data_code=%#010x, mc_patch_data_id=%#06x, " +
-                       "mc_patch_data_len=%#04x, init_flag=%#04x, " +
-                       "mc_patch_data_checksum=%#010x]") %
-                      (hdr.data_code, hdr.mc_patch_data_id,
-                       hdr.mc_patch_data_len, hdr.init_flag,
-                       hdr.mc_patch_data_checksum))
-                print(("   [nb_dev_id=%#010x, sb_dev_id=%#010x, " +
-                       "nb_rev_id=%#04x, sb_rev_id=%#04x, " +
-                       "bios_api_rev=%#04x, reserved=[%#04x, %#04x, %#04x]]") %
-                      (hdr.nb_dev_id, hdr.sb_dev_id, hdr.nb_rev_id,
-                       hdr.sb_rev_id, hdr.bios_api_rev,
-                       hdr.reserved[0], hdr.reserved[1], hdr.reserved[2]))
-                print("   [match_reg=[%s]]" %
-                      ", ".join(["%#010x" % x for x in hdr.match_reg]))
-
-            patch = PatchEntry(path, patch_start, patch_length, hdr.equiv_id,
-                               hdr.ucode_level)
             patches.append(patch)
 
             if opts.extract:
