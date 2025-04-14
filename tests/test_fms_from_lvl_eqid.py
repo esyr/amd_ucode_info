@@ -30,8 +30,11 @@ FMS_FROM_LVL_EQID_TESTS = [
     (0x0a201210, 0xa212, 0xa20f12, ""),
     (0x0aa00116, 0xaa01, 0xaa0f01, ""),
 
-    (0x00000000, 0x0000, None, ""),
-    (0x00caffee, 0xdead, None, ""),
+    (0x00000000, 0x0000, 0x000f00, ""),
+    (0x00caffee, 0xdead, None,
+     "WARNING: Discrepancy in the extended family value between the patch " +
+     "level (0x00 in 0x00caffee) and equivalence ID (0xd in 0xdead)\n"),
+    (0x00caffee, 0x0bad, 0x0b0fad, ""),
     (0x01234567, 0x0123, None,
      "WARNING: Discrepancy in the extended family value between the patch " +
      "level (0x01 in 0x01234567) and equivalence ID (0x0 in 0x0123)\n"),

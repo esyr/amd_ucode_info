@@ -159,8 +159,8 @@ def fms_from_lvl_eqid(lvl, eqid, f, pos):
             warn(("Reserved field (%#03x) in the family 17h+ patch level " +
                   "(%#010x) is not zero") % (reserved, lvl), f, pos)
             return None
-    elif ext_fam >= 0x1:
-        # For families 10h..16h we try to use equivalence ID,
+    else:
+        # For families 0Fh..16h we try to use equivalence ID,
         # but this may be imprecise;  all the publicly available microcode
         # containers seem to have at least the CPUID obtained
         # from reconstructing it from the equiv_id, however.
@@ -175,8 +175,6 @@ def fms_from_lvl_eqid(lvl, eqid, f, pos):
                   "(%#03x in %#06x)") % (ext_fam, lvl, eqid_ext_fam, eqid),
                  f, pos)
             return None
-    else:
-        return None
 
     return FMS(ext_fam + 0xf, ext_model << 4 | model, stepping, False, 0,
                ext_fam << 20 | ext_model << 16 | 0xf00 | model << 4 | stepping)
