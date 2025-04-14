@@ -515,8 +515,9 @@ def extract_patch(opts, out_dir, ucode_file, patch, equiv_table=None):
         out_file_name = "mc_patch_0%x.bin" % patch.level
     else:
         out_file_name = "mc_equivid_%#06x" % patch.equiv_id
-        for cpuid in equiv_table[patch.equiv_id]:
-            out_file_name += '_cpuid_%#010x' % cpuid
+        if patch.equiv_id in equiv_table:
+            for cpuid in equiv_table[patch.equiv_id]:
+                out_file_name += '_cpuid_%#010x' % cpuid
         out_file_name += "_patch_%#010x.bin" % patch.level
 
     out_path = "%s/%s" % (os.getcwd(), out_file_name)
