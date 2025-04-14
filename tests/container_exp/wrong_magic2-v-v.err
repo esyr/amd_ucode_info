@@ -1,0 +1,1 @@
+container: ERROR: File does not appear to be a container (got magic b'INTC', expected b'DMA\x00') or a raw patch (a non-decimal digit 0xe is present in the patch date field (0x43544e49), year (4e49) is out of 2000..2099 range, day (54) is out of 01..31 range, month (43) is out of 01..13 range, patch data format ID (0x0000) is out of the expected 0x8000..0x80ff range)

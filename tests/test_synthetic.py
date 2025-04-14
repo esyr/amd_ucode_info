@@ -62,12 +62,11 @@ TEST_DATA = {
                      "")),
     "wrong_magic1": ((u8(0x49), u8(0x4e), u8(0x54), u8(0x43)),
                      errno.EINVAL, False,
-                     ("container+0x0000: ERROR: Missing magic number " +
-                      "at beginning of container", "")),
+                     ("container+0x0000: ERROR: File is too short to contain" +
+                      " patch header (4 bytes left, at least 64 bytes needed)",
+                      "")),
     "wrong_magic2": ((u8(0x49), u8(0x4e), u8(0x54), u8(0x43), u32(0) * 64),
-                     errno.EINVAL, False,
-                     ("container+0x0000: ERROR: Missing magic number " +
-                      "at beginning of container", "")),
+                     errno.EINVAL, False, None),
     "only_magic": ((MAGIC, ), errno.EINVAL, False,
                    ("container+0x0004: ERROR: File is too short to contain " +
                     "equivalence table section header (0 bytes left, " +

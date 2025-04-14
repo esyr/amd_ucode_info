@@ -16,6 +16,7 @@ import sys
 
 from collections import namedtuple
 from collections import OrderedDict
+from enum import Flag, auto
 
 MAGIC_SIZE = 4
 SECTION_HDR_SIZE = 8
@@ -41,6 +42,23 @@ PatchHeader = namedtuple("PatchHeader",
                          defaults=(0, ) * 12 + ((0,) * 3, (0,) * 8))
 PatchEntry = namedtuple("PatchEntry",
                         ("file", "offset", "size", "equiv_id", "level"))
+
+
+# Issues with the patch header, as returned by detect_raw_patch()
+class RawPatchIssue(Flag):
+    NONE = 0
+    NON_DEC_DATE_DIGIT = auto()
+    YEAR_OUT_OF_RANGE = auto()
+    DAY_OUT_OF_RANGE = auto()
+    MONTH_OUT_OF_RANGE = auto()
+    UNEXPECTED_PRE_ZEN_PATCH_LVL = auto()
+    UNEXPECTED_ZEN_PATCH_LVL = auto()
+    UNEXPECTED_PATCH_DATA_ID = auto()
+    UNEXPECTED_NON_ZERO_CSUM = auto()
+    # Reserved field is not b'\xaa\xaa\xaa' for patch format 0x800[013]
+    UNEXPECTED_OLD_RESERVED_VALUE = auto()
+    # Reserved field is not b'\x00\x00\x00'
+    UNEXPECTED_RESERVED_VALUE = auto()
 
 
 def diagmsg(prefix, msg, f=None, offs=None):
@@ -219,7 +237,101 @@ def read_patch_hdr(f):
                        tuple(read_int32(f) for _ in range(8)))  # match_reg
 
 
-def parse_patch_hdr(hdr, ucode_file, cursor, opts, ids, start, length):
+def detect_raw_patch(f):
+    """
+    Checks if the next 64 bytes look like a patch header.
+
+    Returns: (hdr, issues, desc)
+      - hdr is a PatchHeader that has been read;
+      - issues is a set of RawPatchIssue flags, or 0 if no issues
+        have been found;
+      - desc is a dict PatchHeader: str containing messages describing each
+        of the issue, that can be presented to the user.
+    """
+    def issue(val, desc_str):
+        nonlocal issues
+        nonlocal desc
+
+        issues |= val
+        desc[val] = desc_str
+
+    hdr = read_patch_hdr(f)
+    issues = RawPatchIssue.NONE
+    desc = {}
+
+    # Check that the date consists of decimal digits
+    for i in range(8):
+        digit = (hdr.data_code >> (i * 4)) & 0xf
+        if digit > 9:
+            issue(RawPatchIssue.NON_DEC_DATE_DIGIT,
+                  ("a non-decimal digit %#x is present in the patch date " +
+                   "field (%#010x)") % (digit, hdr.data_code))
+            break
+    # We expect 20YY as a sane value, where Y is in 0..9 range
+    if (hdr.data_code >> 8) & 0xff != 0x20:
+        issue(RawPatchIssue.YEAR_OUT_OF_RANGE,
+              "year (%04x) is out of 2000..2099 range"
+              % (hdr.data_code & 0xffff))
+    day = (hdr.data_code >> 16) & 0xff
+    if not (0x1 <= day <= 0x31):
+        issue(RawPatchIssue.DAY_OUT_OF_RANGE,
+              "day (%02x) is out of 01..31 range" % day)
+    # 0x13 because there was 0x03000027 microcode patch with the data_code
+    # value of 0x13092011
+    month = (hdr.data_code >> 24) & 0xff
+    if not (0x1 <= month <= 0x13):
+        issue(RawPatchIssue.MONTH_OUT_OF_RANGE,
+              "month (%02x) is out of 01..13 range" % month)
+
+    # For patch level, we can check that it is small enough for families
+    # 0Fh..16h and that the reserved field is 0 for families 17h+.
+    # We could also check that the extended family is not big enough,
+    # but it is difficult to point out specific upper bound.
+    ext_fam = hdr.ucode_level >> 24
+    # if ext_fam < 1:
+    #     issues |= 1 << 4
+    if (ext_fam < 8) and (hdr.ucode_level & 0x00f00000):
+        issue(RawPatchIssue.UNEXPECTED_PRE_ZEN_PATCH_LVL,
+              "unexpected pre-Zen patch level (%#010x)" % hdr.ucode_level)
+    lvl_reserved = hdr.ucode_level & 0x000f0000
+    if (ext_fam >= 8) and (hdr.ucode_level & 0x000f0000):
+        issue(RawPatchIssue.UNEXPECTED_ZEN_PATCH_LVL,
+              ("unexpected non-zero reserved field value (%#010x) in Zen+ " +
+               "patch level (%#010x)") % (lvl_reserved, hdr.ucode_level))
+
+    # mc_patch_data_id seems to be 0x80XX so far
+    if hdr.mc_patch_data_id < 0x8000 or hdr.mc_patch_data_id > 0x80ff:
+        issue(RawPatchIssue.UNEXPECTED_PATCH_DATA_ID,
+              ("patch data format ID (%#06x) is out of the expected" +
+               " 0x8000..0x80ff range") % hdr.mc_patch_data_id)
+
+    # For checksum, let's just check that it's zero when data_id is not 0x8000
+    # or 0x8003, as checking the checksum requires reading of the whole patch
+    if hdr.mc_patch_data_id not in (0x8000, 0x8003) \
+       and hdr.mc_patch_data_checksum:
+        issue(RawPatchIssue.UNEXPECTED_NON_ZERO_CSUM,
+              ("non-zero checksum field value (%#010x) for patch data format" +
+               " %#06x") % (hdr.mc_patch_data_checksum, hdr.mc_patch_data_id))
+
+    # The "reserved" field seems to contain 0xaa bytes for data_id 0x800[013]
+    # and zeroes otherwise
+    if hdr.mc_patch_data_id in (0x8000, 0x8001, 0x8003):
+        if hdr.reserved != (0xaa, 0xaa, 0xaa):
+            issue(RawPatchIssue.UNEXPECTED_OLD_RESERVED_VALUE,
+                  ("unexpected reserved field value (%r) for data format" +
+                   " ID %#06x (b'\\xaa\\xaa\\xaa' expected)")
+                  % (bytes(hdr.reserved), hdr.mc_patch_data_id))
+    else:
+        if hdr.reserved != (0x00, 0x00, 0x00):
+            issue(RawPatchIssue.UNEXPECTED_RESERVED_VALUE,
+                  ("unexpected reserved field value (%r) for data format" +
+                   " ID %#06x (b'\\x00\\x00\\x00' expected)")
+                  % (bytes(hdr.reserved), hdr.mc_patch_data_id))
+
+    return (hdr, issues, desc)
+
+
+def parse_patch_hdr(hdr, ucode_file, cursor, opts, ids, start, length, raw):
     if opts.verbose:
         add_info = (" Start=%u bytes Date=%04x-%02x-%02x" +
                     " Equiv_id=%#06x") % \
@@ -233,8 +345,9 @@ def parse_patch_hdr(hdr, ucode_file, cursor, opts, ids, start, length):
                                   ucode_file, cursor)
 
     if hdr.equiv_id not in ids:
-        warn(("Patch equivalence id not present in equivalence" +
-              " table (%#06x)") % hdr.equiv_id, ucode_file, cursor)
+        if not raw:
+            warn(("Patch equivalence id not present in equivalence" +
+                  " table (%#06x)") % hdr.equiv_id, ucode_file, cursor)
         if patch_fms is None:
             print(("  Family=???? Model=???? Stepping=????: " +
                    "Patch=%#010x Length=%u bytes%s")
@@ -552,6 +665,15 @@ def parse_ucode_file(opts, path, start_offset):
 
         return False
 
+    def process_patch(patch, ids):
+        patches.append(patch)
+
+        if opts.extract:
+            extract_patch(opts, opts.extract, ucode_file, patch)
+
+        if opts.split:
+            extract_patch(opts, opts.split, ucode_file, patch, ids)
+
     table = None
     patches = []
 
@@ -562,15 +684,44 @@ def parse_ucode_file(opts, path, start_offset):
         # Seek to end of file to determine file size
         ucode_file.seek(0, io.SEEK_END)
         end_of_file = ucode_file.tell()
+        container_str = ""
 
         # Check magic number
         ucode_file.seek(start_offset, io.SEEK_SET)
         if not check_bytes_left(ucode_file, MAGIC_SIZE, "container magic"):
             return (None, None, None, errno.EINVAL)
-        if ucode_file.read(4) != b'DMA\x00':
-            err("Missing magic number at beginning of container",
-                ucode_file, start_offset)
-            return (None, None, None, errno.EINVAL)
+        file_magic = ucode_file.read(MAGIC_SIZE)
+        if file_magic != b'DMA\x00':
+            if start_offset != 0:
+                err("Missing magic number at beginning of container",
+                    ucode_file, start_offset)
+                return (None, None, None, errno.EINVAL)
+            else:
+                # A string that is used for the error message that file
+                # is neither a container nor a raw patch
+                container_str = "a container%s or " \
+                    % (" (got magic %r, expected b'DMA\\x00')" % file_magic
+                       if opts.verbose >= VERBOSE_DEBUG else "")
+
+            ucode_file.seek(0, io.SEEK_SET)
+            if not check_bytes_left(ucode_file, PATCH_HEADER_SIZE,
+                                    "patch header"):
+                return (None, None, None, errno.EINVAL)
+
+            hdr, issues, issues_desc = detect_raw_patch(ucode_file)
+            if issues == RawPatchIssue.NONE:
+                patch = parse_patch_hdr(hdr, ucode_file, 0, opts, {},
+                                        0, end_of_file, True)
+
+                process_patch(patch, {})
+
+                return (None, [], patches, 0)
+            else:
+                err("File does not appear to be %sa raw patch%s" %
+                    (container_str, " (%s)" % ", ".join(issues_desc.values())
+                                    if opts.verbose >= VERBOSE_DEBUG else ""),
+                    ucode_file)
+                return (None, None, None, errno.EINVAL)
 
         # Check the equivalence table type
         if not check_bytes_left(ucode_file, SECTION_HDR_SIZE,
@@ -635,15 +786,9 @@ def parse_ucode_file(opts, path, start_offset):
             hdr = read_patch_hdr(ucode_file)
 
             patch = parse_patch_hdr(hdr, ucode_file, cursor, opts, ids,
-                                    patch_start, patch_length)
+                                    patch_start, patch_length, False)
 
-            patches.append(patch)
-
-            if opts.extract:
-                extract_patch(opts, opts.extract, ucode_file, patch)
-
-            if opts.split:
-                extract_patch(opts, opts.split, ucode_file, patch, ids)
+            process_patch(patch, ids)
 
             cursor = cursor + SECTION_HDR_SIZE + patch_length
 
