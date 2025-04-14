@@ -32,6 +32,13 @@ FMS = namedtuple("FMS", ("family", "model", "stepping",
                          "family_invalid", "reserved", "cpu_id"))
 EquivTableEntry = namedtuple("EquivTableEntry",
                              ("cpuid", "equiv_id", "data", "offset"))
+PatchHeader = namedtuple("PatchHeader",
+                         ("data_code", "ucode_level",
+                          "mc_patch_data_id", "mc_patch_data_len", "init_flag",
+                          "mc_patch_data_checksum", "nb_dev_id", "sb_dev_id",
+                          "equiv_id", "nb_rev_id", "sb_rev_id", "bios_api_rev",
+                          "reserved", "match_reg"),
+                         defaults=(0, ) * 12 + ((0,) * 3, (0,) * 8))
 PatchEntry = namedtuple("PatchEntry",
                         ("file", "offset", "size", "equiv_id", "level"))
 
@@ -173,6 +180,45 @@ def fms_from_lvl_eqid(lvl, eqid, f, pos):
 
     return FMS(ext_fam + 0xf, ext_model << 4 | model, stepping, False, 0,
                ext_fam << 20 | ext_model << 16 | 0xf00 | model << 4 | stepping)
+
+
+def read_patch_hdr(f):
+    """
+    Reads PATCH_HEADER_SIZE from f and puts them into PatchHeader.
+
+    The patch header is defined as follows:
+
+    struct microcode_header_amd {
+        u32 data_code;
+        u32 patch_id;
+        u16 mc_patch_data_id;
+        u8  mc_patch_data_len;
+        u8  init_flag;
+        u32 mc_patch_data_checksum;
+        u32 nb_dev_id;
+        u32 sb_dev_id;
+        u16 processor_rev_id;
+        u8  nb_rev_id;
+        u8  sb_rev_id;
+        u8  bios_api_rev;
+        u8  reserved1[3];
+        u32 match_reg[8];
+    } __packed;
+    """
+    return PatchHeader(read_int32(f),  # data_code
+                       read_int32(f),  # ucode_level
+                       read_int16(f),  # mc_patch_data_id
+                       read_int8(f),   # mc_patch_data_len
+                       read_int8(f),   # init_flag
+                       read_int32(f),  # mc_patch_data_checksum
+                       read_int32(f),  # nb_dev_id
+                       read_int32(f),  # sb_dev_id
+                       read_int16(f),  # equiv_id
+                       read_int8(f),   # nb_rev_id
+                       read_int8(f),   # sb_rev_id
+                       read_int8(f),   # bios_api_rev
+                       tuple(read_int8(f) for _ in range(3)),   # reserved
+                       tuple(read_int32(f) for _ in range(8)))  # match_reg
 
 
 def parse_equiv_table(opts, ucode_file, start_offset, eq_table_len):
@@ -532,69 +578,39 @@ def parse_ucode_file(opts, path, start_offset):
                 cursor = cursor + SECTION_HDR_SIZE + patch_length
                 continue
 
-            """
-            struct microcode_header_amd {
-                u32 data_code;
-                u32 patch_id;
-                u16 mc_patch_data_id;
-                u8  mc_patch_data_len;
-                u8  init_flag;
-                u32 mc_patch_data_checksum;
-                u32 nb_dev_id;
-                u32 sb_dev_id;
-                u16 processor_rev_id;
-                u8  nb_rev_id;
-                u8  sb_rev_id;
-                u8  bios_api_rev;
-                u8  reserved1[3];
-                u32 match_reg[8];
-            } __packed;
-            """
-            data_code = read_int32(ucode_file)
-            ucode_level = read_int32(ucode_file)
-            mc_patch_data_id = read_int16(ucode_file)
-            mc_patch_data_len = read_int8(ucode_file)
-            init_flag = read_int8(ucode_file)
-            mc_patch_data_checksum = read_int32(ucode_file)
-            nb_dev_id = read_int32(ucode_file)
-            sb_dev_id = read_int32(ucode_file)
-            equiv_id = read_int16(ucode_file)
-            nb_rev_id = read_int8(ucode_file)
-            sb_rev_id = read_int8(ucode_file)
-            bios_api_rev = read_int8(ucode_file)
-            reserved1 = [read_int8(ucode_file) for _ in range(3)]
-            match_reg = [read_int32(ucode_file) for _ in range(8)]
+            hdr = read_patch_hdr(ucode_file)
 
             if opts.verbose:
                 add_info = (" Start=%u bytes Date=%04x-%02x-%02x" +
                             " Equiv_id=%#06x") % \
-                           (patch_start, data_code & 0xffff, data_code >> 24,
-                            (data_code >> 16) & 0xff, equiv_id)
+                           (patch_start, hdr.data_code & 0xffff,
+                            hdr.data_code >> 24, (hdr.data_code >> 16) & 0xff,
+                            hdr.equiv_id)
             else:
                 add_info = ""
 
-            patch_fms = fms_from_lvl_eqid(ucode_level, equiv_id,
+            patch_fms = fms_from_lvl_eqid(hdr.ucode_level, hdr.equiv_id,
                                           ucode_file, cursor)
 
-            if equiv_id not in ids:
+            if hdr.equiv_id not in ids:
                 warn(("Patch equivalence id not present in equivalence" +
-                      " table (%#06x)") % (equiv_id), ucode_file, cursor)
+                      " table (%#06x)") % hdr.equiv_id, ucode_file, cursor)
                 if patch_fms is None:
                     print(("  Family=???? Model=???? Stepping=????: " +
                            "Patch=%#010x Length=%u bytes%s")
-                          % (ucode_level, patch_length, add_info))
+                          % (hdr.ucode_level, patch_length, add_info))
                 else:
                     print("  %s: Patch=%#010x Length=%u bytes%s"
-                          % (fms2str(patch_fms), ucode_level, patch_length,
+                          % (fms2str(patch_fms), hdr.ucode_level, patch_length,
                              add_info))
             else:
                 cpuid_match = patch_fms is None
                 # The cpu_id is the equivalent to CPUID_Fn00000001_EAX
-                for cpuid in ids[equiv_id]:
+                for cpuid in ids[hdr.equiv_id]:
                     if not cpuid_match and cpuid == patch_fms.cpu_id:
                         cpuid_match = True
                     print("  %s: Patch=%#010x Length=%u bytes%s"
-                          % (cpuid2str(cpuid), ucode_level, patch_length,
+                          % (cpuid2str(cpuid), hdr.ucode_level, patch_length,
                              add_info))
                 if not cpuid_match and patch_fms.family >= 0x17:
                     warn(("CPUID decoded from the microcode patch header " +
@@ -605,18 +621,20 @@ def parse_ucode_file(opts, path, start_offset):
                 print(("   [data_code=%#010x, mc_patch_data_id=%#06x, " +
                        "mc_patch_data_len=%#04x, init_flag=%#04x, " +
                        "mc_patch_data_checksum=%#010x]") %
-                      (data_code, mc_patch_data_id, mc_patch_data_len,
-                       init_flag, mc_patch_data_checksum))
+                      (hdr.data_code, hdr.mc_patch_data_id,
+                       hdr.mc_patch_data_len, hdr.init_flag,
+                       hdr.mc_patch_data_checksum))
                 print(("   [nb_dev_id=%#010x, sb_dev_id=%#010x, " +
                        "nb_rev_id=%#04x, sb_rev_id=%#04x, " +
                        "bios_api_rev=%#04x, reserved=[%#04x, %#04x, %#04x]]") %
-                      (nb_dev_id, sb_dev_id, nb_rev_id, sb_rev_id,
-                       bios_api_rev, reserved1[0], reserved1[1], reserved1[2]))
+                      (hdr.nb_dev_id, hdr.sb_dev_id, hdr.nb_rev_id,
+                       hdr.sb_rev_id, hdr.bios_api_rev,
+                       hdr.reserved[0], hdr.reserved[1], hdr.reserved[2]))
                 print("   [match_reg=[%s]]" %
-                      ", ".join(["%#010x" % x for x in match_reg]))
+                      ", ".join(["%#010x" % x for x in hdr.match_reg]))
 
-            patch = PatchEntry(path, patch_start, patch_length, equiv_id,
-                               ucode_level)
+            patch = PatchEntry(path, patch_start, patch_length, hdr.equiv_id,
+                               hdr.ucode_level)
             patches.append(patch)
 
             if opts.extract:
