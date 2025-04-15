@@ -41,7 +41,7 @@ PatchHeader = namedtuple("PatchHeader",
                           "reserved", "match_reg"),
                          defaults=(0, ) * 12 + ((0,) * 3, (0,) * 8))
 PatchEntry = namedtuple("PatchEntry",
-                        ("file", "offset", "size", "equiv_id", "level"))
+                        ("file", "offset", "size", "equiv_id", "level", "fms"))
 
 
 # Issues with the patch header, as returned by detect_raw_patch()
@@ -385,7 +385,7 @@ def parse_patch_hdr(hdr, ucode_file, cursor, opts, ids, start, length, raw):
               ", ".join(["%#010x" % x for x in hdr.match_reg]))
 
     return PatchEntry(ucode_file.name, start, length,
-                      hdr.equiv_id, hdr.ucode_level)
+                      hdr.equiv_id, hdr.ucode_level, patch_fms)
 
 
 def parse_equiv_table(opts, ucode_file, start_offset, eq_table_len):
@@ -483,6 +483,13 @@ def parse_equiv_table(opts, ucode_file, start_offset, eq_table_len):
     return (table, raw_table, bool(zero_cpuid_record))
 
 
+def gen_eqtbl_entry(cpu_id, equiv_id):
+    data = cpu_id.to_bytes(4, 'little') + b'\0' * 8 \
+           + equiv_id.to_bytes(2, 'little') + b'\0' * 2
+
+    return EquivTableEntry(cpu_id, equiv_id, data, None)
+
+
 def extract_patch(opts, out_dir, ucode_file, patch, equiv_table=None):
     """
     Extract patch (along with the respective headers and equivalence table
@@ -515,6 +522,17 @@ def extract_patch(opts, out_dir, ucode_file, patch, equiv_table=None):
         out_file_name = "mc_patch_0%x.bin" % patch.level
     else:
         out_file_name = "mc_equivid_%#06x" % patch.equiv_id
+        if patch.equiv_id not in equiv_table and opts.gen_missing_eqid:
+            if patch.fms is not None:
+                equiv_table[patch.equiv_id] = OrderedDict()
+                warn(("Generating missing equivalence table item " +
+                      "with CPUID %#010x (%s) for patch ID %#010x, " +
+                      "equivalence ID %#06x") %
+                     (patch.fms.cpu_id, cpuid2str(patch.fms.cpu_id),
+                      patch.level, patch.equiv_id),
+                     patch.file, patch.offset)
+                equiv_table[patch.equiv_id][patch.fms.cpu_id] = \
+                    gen_eqtbl_entry(patch.fms.cpu_id, patch.equiv_id)
         if patch.equiv_id in equiv_table:
             for cpuid in equiv_table[patch.equiv_id]:
                 out_file_name += '_cpuid_%#010x' % cpuid
@@ -581,6 +599,18 @@ def merge_mc(opts, out_path, table, patches):
                 cpuid_map[entry.cpuid] = entry.equiv_id
 
         res_table.append(entry)
+
+    if opts.gen_missing_eqid:
+        for patch in patches:
+            if patch.equiv_id not in equivid_map and patch.fms is not None:
+                warn(("Generating missing equivalence table item in %s " +
+                      "with CPUID %#010x (%s) for patch ID %#010x, " +
+                      "equivalence ID %#06x") %
+                     (out_path, patch.fms.cpu_id, cpuid2str(patch.fms.cpu_id),
+                      patch.level, patch.equiv_id),
+                     patch.file, patch.offset)
+                res_table.append(gen_eqtbl_entry(patch.fms.cpu_id,
+                                                 patch.equiv_id))
 
     with open(out_path, "wb") as out_file:
         write_mc(opts, out_file, patches, equiv_table=res_table)
@@ -868,6 +898,13 @@ def parse_options():
                              "to the specified directory")
     parser.add_argument("-m", "--merge",
                         help="Write a merged container to the specified file")
+    parser.add_argument("--generate-missing-equivalence-table-entries",
+                        dest="gen_missing_eqid", action="store_const",
+                        const=True, default=False,
+                        help="Generate missing equivalence table entries " +
+                             "in the output files based on equivalence ID " +
+                             "and patch level information available " +
+                             "in the patch header")
     parser.add_argument("-v", "--verbose", action="count", default=0,
                         help="Increase output verbosity level: provide once " +
                              "to see additional information about patches, " +
