@@ -555,6 +555,7 @@ def merge_mc(opts, out_path, table, patches):
     # Do some sanity checks, but only warn about the issues
     equivid_map = {}
     cpuid_map = {}
+    res_table = []
 
     for entry in table:
         if entry.equiv_id not in equivid_map:
@@ -562,22 +563,27 @@ def merge_mc(opts, out_path, table, patches):
 
         if entry.cpuid in equivid_map[entry.equiv_id]:
             warn(("Duplicate CPUID %#010x (%s) in the equivalence table " +
-                  "for equiv_id %#06x ") %
+                  "for equiv_id %#06x, skipping in the output") %
                  (entry.cpuid, cpuid2str(entry.cpuid), entry.equiv_id))
+            continue
         else:
             equivid_map[entry.equiv_id][entry.cpuid] = entry
 
         if entry.cpuid in cpuid_map:
             if entry.equiv_id != cpuid_map[entry.cpuid]:
                 warn(("Different equiv_id's (%#06x and %#06x) are present " +
-                      "in the equivalence table for CPUID %#010x (%s)") %
+                      "in the equivalence table for CPUID %#010x (%s), " +
+                      "skipping in the output") %
                      (entry.equiv_id, cpuid_map[entry.cpuid], entry.cpuid,
                       cpuid2str(entry.cpuid)))
+                continue
             else:
                 cpuid_map[entry.cpuid] = entry.equiv_id
 
+        res_table.append(entry)
+
     with open(out_path, "wb") as out_file:
-        write_mc(opts, out_file, patches, equiv_table=table)
+        write_mc(opts, out_file, patches, equiv_table=res_table)
 
         print("Microcode written to %s" % out_path)
 
