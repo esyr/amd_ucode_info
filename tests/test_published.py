@@ -45,23 +45,28 @@ CONTAINER_DATA = {
      "amd-ucode-2012-01-17/microcode_amd_solaris.bin"),
     "microcode_amd_latest": (
      "8a9d9e8b788e31e61cddc03cb1eeab5db99e0f667128943ff0780e6437d2e43e",
-     "https://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git/plain/amd-ucode/microcode_amd.bin",
+     ("https://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git/plain/amd-ucode/microcode_amd.bin",
+      "https://gitlab.com/kernel-firmware/linux-firmware/-/raw/main/amd-ucode/microcode_amd.bin"),
      None),
     "microcode_amd_fam15h_latest": (
      "9d4a668410e72a4bdb86dc23e4261eca04daa83456ada02504115223f356981a",
-     "https://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git/plain/amd-ucode/microcode_amd_fam15h.bin",
+     ("https://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git/plain/amd-ucode/microcode_amd_fam15h.bin",
+      "https://gitlab.com/kernel-firmware/linux-firmware/-/raw/main/amd-ucode/microcode_amd_fam15h.bin"),
      None),
     "microcode_amd_fam16h_latest": (
      "e02ad653b39c975d6c52674b50f23727bb6706bab7b4e5b391a4ce229e7ff121",
-     "https://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git/plain/amd-ucode/microcode_amd_fam16h.bin",
+     ("https://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git/plain/amd-ucode/microcode_amd_fam16h.bin",
+      "https://gitlab.com/kernel-firmware/linux-firmware/-/raw/main/amd-ucode/microcode_amd_fam16h.bin"),
      None),
     "microcode_amd_fam17h_20241121": (
      "966e4b796ec689c618868d08f8a37f347b0e7bfce4ae9df793e08471d363b7d0",
-     "https://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git/plain/amd-ucode/microcode_amd_fam17h.bin?id=48bb90cceb882cab8e9ab692bc5779d3bf3a13b8",
+     ("https://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git/plain/amd-ucode/microcode_amd_fam17h.bin?id=48bb90cceb882cab8e9ab692bc5779d3bf3a13b8",
+      "https://gitlab.com/kernel-firmware/linux-firmware/-/raw/48bb90cceb882cab8e9ab692bc5779d3bf3a13b8/amd-ucode/microcode_amd_fam17h.bin"),
      None),
     "microcode_amd_fam19h_20241121": (
      "bcc4ea74dede10b2e0750780cf644ec0e3f9cfa240c0527e85a8853106c56af3",
-     "https://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git/plain/amd-ucode/microcode_amd_fam19h.bin?id=48bb90cceb882cab8e9ab692bc5779d3bf3a13b8",
+     ("https://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git/plain/amd-ucode/microcode_amd_fam19h.bin?id=48bb90cceb882cab8e9ab692bc5779d3bf3a13b8",
+      "https://gitlab.com/kernel-firmware/linux-firmware/-/raw/48bb90cceb882cab8e9ab692bc5779d3bf3a13b8/amd-ucode/microcode_amd_fam19h.bin"),
      None),
 }
 # The list of containers to run test_released_container on
@@ -144,7 +149,7 @@ def container(tmp_path_factory):
     and the path ot it.
     """
     def get_container(name):
-        exp_csum, url, tar_path = CONTAINER_DATA[name]
+        exp_csum, urls, tar_path = CONTAINER_DATA[name]
         path = CACHE_DIR / ("%s.bin" % name)
 
         os.makedirs(CACHE_DIR, exist_ok=True)
@@ -152,28 +157,39 @@ def container(tmp_path_factory):
         if not check_csum(path, exp_csum):
             # Download into a temporary directory and check its checksum,
             # copy to the cache on success
+            if not isinstance(urls, tuple):
+                urls = (urls,)
             dl = tmp_path_factory.mktemp("dl")
-            tmp = dl / \
-                ("%s.%s" % (name, "out" if tar_path is None else "tar"))
-            r = requests.get(url, allow_redirects=True)
-            with open(tmp, mode="wb") as t:
-                t.write(r.content)
 
-            # Some microcode blobs are inside tarballs, need to be extracted
-            if tar_path is not None:
-                with tarfile.open(tmp, "r:*") as tar:
-                    tmp = dl / ("%s.bin" % name)
-                    ti = tar.getmember(tar_path)
-                    ti.name = tmp.name
-                    tar.extract(ti, path=tmp.parent, set_attrs=False)
+            csum_ok = False
+            for url in urls:
+                tmp = dl / \
+                    ("%s.%s" % (name, "out" if tar_path is None else "tar"))
+                r = requests.get(url, allow_redirects=True)
+                if r.status_code != 200:
+                    continue
+                with open(tmp, mode="wb") as t:
+                    t.write(r.content)
 
-            # Check the checksum before copying to the cache,
-            # bail out on mismatch
-            with open(tmp, mode="rb") as t:
-                tmp_csum = file_csum(t)
+                # Some microcode blobs are inside tarballs, need to be extracted
+                if tar_path is not None:
+                    with tarfile.open(tmp, "r:*") as tar:
+                        tmp = dl / ("%s.bin" % name)
+                        ti = tar.getmember(tar_path)
+                        ti.name = tmp.name
+                        tar.extract(ti, path=tmp.parent, set_attrs=False)
 
-                if tmp_csum != exp_csum:
-                    raise IncorrectCheckSumError(tmp_csum, exp_csum)
+                # Check the checksum before copying to the cache,
+                # bail out on mismatch
+                with open(tmp, mode="rb") as t:
+                    tmp_csum = file_csum(t)
+
+                    if tmp_csum == exp_csum:
+                        csum_ok = True
+                        break
+
+            if not csum_ok:
+                raise IncorrectCheckSumError(tmp_csum, exp_csum)
 
             shutil.move(tmp, path)
 
