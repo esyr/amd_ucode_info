@@ -21,52 +21,72 @@ CONTAINER_DATA = {
     # name: (sha256_sum, url, tar_path)
     "microcode_amd_20090120": (
      "da7b21c031a3c3ab3dacbb23c3cb8f0ec19161f9adb22c5c619b7b1471ba57cd",
-     "http://web.archive.org/web/20160726141516/http://www.amd64.org/microcode/amd-ucode-2009-01-20.tar",
+     "http://web.archive.org/web/20160726141516/" +
+     "http://www.amd64.org/microcode/amd-ucode-2009-01-20.tar",
      "amd-ucode-2009-01-20/microcode_amd.bin"),
     "microcode_amd_20110111": (
      "4551c30e4eabe838e783484b173366c4e8c448b4cdc9770bb5719907246c19b4",
-     "http://web.archive.org/web/20160726141516/http://www.amd64.org/microcode/amd-ucode-2011-01-11.tar",
+     "http://web.archive.org/web/20160726141516/" +
+     "http://www.amd64.org/microcode/amd-ucode-2011-01-11.tar",
      "amd-ucode-2011-01-11/microcode_amd.bin"),
     "microcode_amd_20120117": (
      "2d3cbc267ddcb7fee54d2302fafaa5f19b02b501db011ab87f2901abb9e1d1dc",
-     "http://web.archive.org/web/20160726141516/http://www.amd64.org/microcode/amd-ucode-2012-01-17.tar",
+     "http://web.archive.org/web/20160726141516/" +
+     "http://www.amd64.org/microcode/amd-ucode-2012-01-17.tar",
      "amd-ucode-2012-01-17/microcode_amd.bin"),
     "microcode_amd_fam15h_20120117": (
      "0029f635a56413e945e4f364b01e9ed93ec97963b2f3209fcbbfc5735eab673d",
-     "http://web.archive.org/web/20160726141516/http://www.amd64.org/microcode/amd-ucode-2012-01-17.tar",
+     "http://web.archive.org/web/20160726141516/" +
+     "http://www.amd64.org/microcode/amd-ucode-2012-01-17.tar",
      "amd-ucode-2012-01-17/microcode_amd_fam15h.bin"),
     "microcode_amd_fam15h_20130711": (
      "8b0f67c59157dbf5075fd5f8078b8a43eba1c8d978286a98ebb9b476e4594db2",
-     "http://web.archive.org/web/20160726141516/http://www.amd64.org/microcode/amd-ucode-2013-07-11.tar.bz2",
+     "http://web.archive.org/web/20160726141516/" +
+     "http://www.amd64.org/microcode/amd-ucode-2013-07-11.tar.bz2",
      "amd-ucode/microcode_amd_fam15h.bin"),
     "microcode_amd_solaris_20120910": (
      "ce18c411ca5873b872291177c73a8237aa26c2c21b03b25e333865555a26b304",
-     "http://web.archive.org/web/20160726141516/http://www.amd64.org/microcode/amd-ucode-2012-09-10.tar",
+     "http://web.archive.org/web/20160726141516/" +
+     "http://www.amd64.org/microcode/amd-ucode-2012-09-10.tar",
      "amd-ucode-2012-01-17/microcode_amd_solaris.bin"),
     "microcode_amd_latest": (
      "8a9d9e8b788e31e61cddc03cb1eeab5db99e0f667128943ff0780e6437d2e43e",
-     ("https://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git/plain/amd-ucode/microcode_amd.bin",
-      "https://gitlab.com/kernel-firmware/linux-firmware/-/raw/main/amd-ucode/microcode_amd.bin"),
+     ("https://git.kernel.org/pub/scm/linux/kernel/git/firmware/" +
+      "linux-firmware.git/plain/amd-ucode/microcode_amd.bin",
+      "https://gitlab.com/kernel-firmware/" +
+      "linux-firmware/-/raw/main/amd-ucode/microcode_amd.bin"),
      None),
     "microcode_amd_fam15h_latest": (
      "9d4a668410e72a4bdb86dc23e4261eca04daa83456ada02504115223f356981a",
-     ("https://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git/plain/amd-ucode/microcode_amd_fam15h.bin",
-      "https://gitlab.com/kernel-firmware/linux-firmware/-/raw/main/amd-ucode/microcode_amd_fam15h.bin"),
+     ("https://git.kernel.org/pub/scm/linux/kernel/git/firmware/" +
+      "linux-firmware.git/plain/amd-ucode/microcode_amd_fam15h.bin",
+      "https://gitlab.com/kernel-firmware/" +
+      "linux-firmware/-/raw/main/amd-ucode/microcode_amd_fam15h.bin"),
      None),
     "microcode_amd_fam16h_latest": (
      "e02ad653b39c975d6c52674b50f23727bb6706bab7b4e5b391a4ce229e7ff121",
-     ("https://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git/plain/amd-ucode/microcode_amd_fam16h.bin",
-      "https://gitlab.com/kernel-firmware/linux-firmware/-/raw/main/amd-ucode/microcode_amd_fam16h.bin"),
+     ("https://git.kernel.org/pub/scm/linux/kernel/git/firmware/" +
+      "linux-firmware.git/plain/amd-ucode/microcode_amd_fam16h.bin",
+      "https://gitlab.com/kernel-firmware/" +
+      "linux-firmware/-/raw/main/amd-ucode/microcode_amd_fam16h.bin"),
      None),
     "microcode_amd_fam17h_20241121": (
      "966e4b796ec689c618868d08f8a37f347b0e7bfce4ae9df793e08471d363b7d0",
-     ("https://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git/plain/amd-ucode/microcode_amd_fam17h.bin?id=48bb90cceb882cab8e9ab692bc5779d3bf3a13b8",
-      "https://gitlab.com/kernel-firmware/linux-firmware/-/raw/48bb90cceb882cab8e9ab692bc5779d3bf3a13b8/amd-ucode/microcode_amd_fam17h.bin"),
+     ("https://git.kernel.org/pub/scm/linux/kernel/git/firmware/" +
+      "linux-firmware.git/plain/amd-ucode/microcode_amd_fam17h.bin" +
+      "?id=48bb90cceb882cab8e9ab692bc5779d3bf3a13b8",
+      "https://gitlab.com/kernel-firmware/" +
+      "linux-firmware/-/raw/48bb90cceb882cab8e9ab692bc5779d3bf3a13b8/" +
+      "amd-ucode/microcode_amd_fam17h.bin"),
      None),
     "microcode_amd_fam19h_20241121": (
      "bcc4ea74dede10b2e0750780cf644ec0e3f9cfa240c0527e85a8853106c56af3",
-     ("https://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git/plain/amd-ucode/microcode_amd_fam19h.bin?id=48bb90cceb882cab8e9ab692bc5779d3bf3a13b8",
-      "https://gitlab.com/kernel-firmware/linux-firmware/-/raw/48bb90cceb882cab8e9ab692bc5779d3bf3a13b8/amd-ucode/microcode_amd_fam19h.bin"),
+     ("https://git.kernel.org/pub/scm/linux/kernel/git/firmware/" +
+      "linux-firmware.git/plain/amd-ucode/microcode_amd_fam19h.bin" +
+      "?id=48bb90cceb882cab8e9ab692bc5779d3bf3a13b8",
+      "https://gitlab.com/kernel-firmware/" +
+      "linux-firmware/-/raw/48bb90cceb882cab8e9ab692bc5779d3bf3a13b8/" +
+      "amd-ucode/microcode_amd_fam19h.bin"),
      None),
 }
 # The list of containers to run test_released_container on
