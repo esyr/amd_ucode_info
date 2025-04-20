@@ -1,0 +1,8 @@
+Microcode patches in container_cache/microcode_amd_20110111.bin:
+  Family=0x10 Model=0x02 Stepping=0x03: Patch=0x01000083 Length=960 bytes Start=100 bytes Date=2008-04-30 Equiv_id=0x1022
+  Family=0x10 Model=0x02 Stepping=0x02: Patch=0x01000083 Length=960 bytes Start=100 bytes Date=2008-04-30 Equiv_id=0x1022
+    Patch extracted to out/mc_equivid_0x1022_cpuid_0x00100f23_cpuid_0x00100f22_patch_0x01000083.bin
+  Family=0x10 Model=0x02 Stepping=0x0a: Patch=0x01000084 Length=960 bytes Start=1068 bytes Date=2008-05-01 Equiv_id=0x1020
+    Patch extracted to out/mc_equivid_0x1020_cpuid_0x00100f2a_patch_0x01000084.bin
+  Family=0x14 Model=0x01 Stepping=0x00: Patch=0x05000028 Length=1824 bytes Start=2036 bytes Date=2010-11-24 Equiv_id=0x5010
+    Patch extracted to out/mc_equivid_0x5010_cpuid_0x00500f10_patch_0x05000028.bin

@@ -7,11 +7,14 @@
 
 import errno
 import hashlib
+import io
 import os
 import pathlib
 import pytest
+import re
 import requests
 import shutil
+import struct
 import subprocess
 import tarfile
 import warnings
@@ -220,9 +223,33 @@ def container(tmp_path_factory):
     return get_container
 
 
+@pytest.fixture
+def tmp_container(tmp_path):
+    """
+    Puts the container passed as an argument in a temporary directory
+    and returns the path to it as a third tuple element.
+    """
+    def get_tmp_container(container):
+        name, path = container
+
+        container_dir = tmp_path / path.parent
+        container_dir.mkdir(exist_ok=True)
+
+        shutil.copy(CUR_DIR / path, tmp_path / path)
+
+        return (name, path, tmp_path)
+
+    return get_tmp_container
+
+
 @pytest.fixture(scope="module", params=CONTAINERS)
 def released_container(request, container):
     return container(request.param)
+
+
+@pytest.fixture(params=CONTAINERS)
+def tmp_released_container(request, container, tmp_container):
+    return tmp_container(container(request.param))
 
 
 @pytest.fixture(scope="module")
@@ -264,6 +291,11 @@ def concat_container(request, container, tmp_path_factory):
 @pytest.fixture(scope="module", params=CONTAINER_SETS)
 def concat_released_container(request, concat_container):
     return concat_container(request.param)
+
+
+@pytest.fixture(params=CONTAINER_SETS)
+def tmp_concat_released_container(request, concat_container, tmp_container):
+    return tmp_container(concat_container(request.param))
 
 
 @pytest.fixture(scope="module",
@@ -312,3 +344,136 @@ def test_multiple_containers(capfd, multiple_containers, exp, args):
     out, err = capfd.readouterr()
     assert err == ""
     assert out == exp_data
+
+
+def __test_extract_split(capfd, tmp_container, exp, is_split):
+    """
+    Calls amd_ucode_info with -s argument and then compares patch data
+    in the produced files with the data pointed at by offsets and sizes
+    in the amd_ucode_info output (assuming that the patch headers
+    are parsed correctly and the amd_ucode_info output is correct).
+    """
+    path_re = re.compile(r"^  Family=(?P<f>0x[0-9a-f]{2}) "
+                         "Model=(?P<m>0x[0-9a-f]{2}) "
+                         "Stepping=(?P<s>0x0[0-9a-f]): "
+                         "Patch=(?P<Patch>0x[0-9a-f]{8}) "
+                         "Length=(?P<Length>[1-9][0-9]*) bytes "
+                         "Start=(?P<Start>0|[1-9][0-9]*) bytes "
+                         "Date=20[0-9][0-9]-(?:0[1-9]|1[0-3])-"
+                         "(?:0[1-9]|[1-2][0-9]|3[01]) "
+                         "Equiv_id=(?P<Equiv_id>0x[0-9a-f]{4})$")
+    extract_re = re.compile(r"^(    Patch extracted to )(?P<path>.*)$",
+                            re.MULTILINE)
+    out_dir = "out"
+
+    name, path, tmp = tmp_container
+    args = ["-s" if is_split else "-e", out_dir, "-v"]
+    exp_data = exp(name, "".join(args))
+    # Monkeypatching the output paths
+    exp_data = extract_re.sub(r"\1%s/\g<path>" % tmp, exp_data)
+
+    subprocess.run([AUI_PATH, ] + args + [path, ], cwd=tmp)
+
+    out, err = capfd.readouterr()
+    assert err == ""
+    assert out == exp_data
+
+    # Parsing the expected output with regexps, because of course why not
+    hdr_re = re.compile(r"^Microcode patches in %s(\+0x[1-9a-f][0-9a-f]*)?:$"
+                        % path)
+    cpuid_data = []
+    saved_data = {}
+    for line in exp_data.split('\n'):
+        if line == '':
+            continue
+        if hdr_re.fullmatch(line):
+            continue
+
+        m = path_re.fullmatch(line)
+        if m:
+            f_, m_, s_, eqid = (int(x, 0) for x in
+                                m.group("f", "m", "s", "Equiv_id"))
+            cpuid = (f_ - 0xf) << 20 | (m_ & 0xf0) << 12 \
+                | 0xf00 | (m_ & 0xf) << 4 | s_
+            cpuid_data.append((cpuid, eqid))
+
+            for var in ("Equiv_id", "Patch", "Start", "Length"):
+                val = int(m.group(var), 0)
+                if var not in saved_data:
+                    saved_data[var] = val
+                elif saved_data[var] != val:
+                    raise ValueError(("%s value of %d in '%r' is not equal " +
+                                      "to the previously seen %d")
+                                     % (var, val, line, saved_data[var]))
+
+            continue
+
+        m = extract_re.fullmatch(line)
+        if m is None:
+            raise ValueError("Unexpected line in the expected output: %r"
+                             % line)
+
+        # Check the file name
+        split_path = m.group("path")
+        if is_split:
+            cpuid_str = "".join(("_cpuid_%#010x" % x[0] for x in cpuid_data))
+            expected_path = "%s/%s/mc_equivid_%#06x%s_patch_%#010x.bin" \
+                            % (tmp, out_dir, saved_data["Equiv_id"], cpuid_str,
+                               saved_data["Patch"])
+        else:
+            expected_path = "%s/%s/mc_patch_%08x.bin" \
+                            % (tmp, out_dir, saved_data["Patch"])
+
+        assert expected_path == split_path
+
+        # Check the data
+        with open(tmp / path, "rb") as f, \
+             open(tmp / split_path, "rb") as out_f:
+            out_sz = patch_sz = saved_data["Length"]
+            if is_split:
+                preamble = out_f.read(8)
+                assert preamble == b'\x44\x4d\x41\0\0\0\0\0'
+
+                eqtbl_sz = out_f.read(4)
+                assert int.from_bytes(eqtbl_sz, 'little') \
+                       == (len(cpuid_data) + 1) * 16
+
+                for cpuid, eqid in cpuid_data:
+                    assert out_f.read(16) == \
+                           struct.pack("<IIIHH", cpuid, 0, 0, eqid, 0)
+
+                assert out_f.read(16) == b'\0' * 16
+                assert out_f.read(4) == b'\1\0\0\0'
+                assert int.from_bytes(out_f.read(4), 'little') == patch_sz
+
+                out_sz += 12 + 16 * len(cpuid_data) + 16 + 8
+
+            f.seek(saved_data["Start"], io.SEEK_SET)
+            assert f.read(patch_sz) == out_f.read(patch_sz)
+
+            assert out_f.tell() == out_sz
+
+            out_f.seek(0, io.SEEK_END)
+            assert out_f.tell() == out_sz
+
+        # Reset the stored info about the patch
+        cpuid_data = []
+        saved_data = {}
+
+
+def test_released_container_extract(capfd, tmp_released_container, exp):
+    __test_extract_split(capfd, tmp_released_container, exp, False)
+
+
+def test_released_container_split(capfd, tmp_released_container, exp):
+    __test_extract_split(capfd, tmp_released_container, exp, True)
+
+
+def test_concatenated_container_extract(capfd, tmp_concat_released_container,
+                                        exp):
+    __test_extract_split(capfd, tmp_concat_released_container, exp, False)
+
+
+def test_concatenated_container_split(capfd, tmp_concat_released_container,
+                                      exp):
+    __test_extract_split(capfd, tmp_concat_released_container, exp, True)

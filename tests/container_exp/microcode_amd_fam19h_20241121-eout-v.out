@@ -1,0 +1,37 @@
+Microcode patches in container_cache/microcode_amd_fam19h_20241121.bin:
+  Family=0x19 Model=0x01 Stepping=0x00: Patch=0x0a00107a Length=5568 bytes Start=324 bytes Date=2024-02-26 Equiv_id=0xa010
+    Patch extracted to out/mc_patch_0a00107a.bin
+  Family=0x19 Model=0x7c Stepping=0x00: Patch=0x0a70c005 Length=5568 bytes Start=5900 bytes Date=2024-02-28 Equiv_id=0xa7c0
+    Patch extracted to out/mc_patch_0a70c005.bin
+  Family=0x19 Model=0x75 Stepping=0x02: Patch=0x0a705206 Length=5568 bytes Start=11476 bytes Date=2024-02-28 Equiv_id=0xa752
+    Patch extracted to out/mc_patch_0a705206.bin
+  Family=0x19 Model=0x08 Stepping=0x02: Patch=0x0a00820c Length=5568 bytes Start=17052 bytes Date=2024-02-29 Equiv_id=0xa082
+    Patch extracted to out/mc_patch_0a00820c.bin
+  Family=0x19 Model=0x11 Stepping=0x02: Patch=0x0a101248 Length=5568 bytes Start=22628 bytes Date=2024-02-26 Equiv_id=0xa112
+    Patch extracted to out/mc_patch_0a101248.bin
+  Family=0x19 Model=0xa0 Stepping=0x02: Patch=0x0aa00215 Length=5568 bytes Start=28204 bytes Date=2024-02-28 Equiv_id=0xaa02
+    Patch extracted to out/mc_patch_0aa00215.bin
+  Family=0x19 Model=0x44 Stepping=0x01: Patch=0x0a404107 Length=5568 bytes Start=33780 bytes Date=2024-02-29 Equiv_id=0xa441
+    Patch extracted to out/mc_patch_0a404107.bin
+  Family=0x19 Model=0x78 Stepping=0x00: Patch=0x0a708007 Length=5568 bytes Start=39356 bytes Date=2024-02-28 Equiv_id=0xa780
+    Patch extracted to out/mc_patch_0a708007.bin
+  Family=0x19 Model=0x21 Stepping=0x00: Patch=0x0a20102d Length=5568 bytes Start=44932 bytes Date=2024-08-27 Equiv_id=0xa210
+    Patch extracted to out/mc_patch_0a20102d.bin
+  Family=0x19 Model=0x74 Stepping=0x01: Patch=0x0a704107 Length=5568 bytes Start=50508 bytes Date=2024-02-28 Equiv_id=0xa741
+    Patch extracted to out/mc_patch_0a704107.bin
+  Family=0x19 Model=0x01 Stepping=0x02: Patch=0x0a001238 Length=5568 bytes Start=56084 bytes Date=2024-02-26 Equiv_id=0xa012
+    Patch extracted to out/mc_patch_0a001238.bin
+  Family=0x19 Model=0x11 Stepping=0x01: Patch=0x0a101148 Length=5568 bytes Start=61660 bytes Date=2024-02-23 Equiv_id=0xa111
+    Patch extracted to out/mc_patch_0a101148.bin
+  Family=0x19 Model=0x61 Stepping=0x02: Patch=0x0a601209 Length=5568 bytes Start=67236 bytes Date=2024-02-27 Equiv_id=0xa612
+    Patch extracted to out/mc_patch_0a601209.bin
+  Family=0x19 Model=0x01 Stepping=0x01: Patch=0x0a0011d5 Length=5568 bytes Start=72812 bytes Date=2024-02-23 Equiv_id=0xa011
+    Patch extracted to out/mc_patch_0a0011d5.bin
+  Family=0x19 Model=0xa0 Stepping=0x01: Patch=0x0aa00116 Length=5568 bytes Start=78388 bytes Date=2023-06-19 Equiv_id=0xaa01
+    Patch extracted to out/mc_patch_0aa00116.bin
+  Family=0x19 Model=0x18 Stepping=0x01: Patch=0x0a108108 Length=5568 bytes Start=83964 bytes Date=2024-02-27 Equiv_id=0xa181
+    Patch extracted to out/mc_patch_0a108108.bin
+  Family=0x19 Model=0x50 Stepping=0x00: Patch=0x0a500011 Length=5568 bytes Start=89540 bytes Date=2024-02-29 Equiv_id=0xa500
+    Patch extracted to out/mc_patch_0a500011.bin
+  Family=0x19 Model=0x21 Stepping=0x02: Patch=0x0a201210 Length=5568 bytes Start=95116 bytes Date=2024-02-29 Equiv_id=0xa212
+    Patch extracted to out/mc_patch_0a201210.bin

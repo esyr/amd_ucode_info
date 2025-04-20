@@ -1,0 +1,15 @@
+Microcode patches in container_cache/microcode_amd_fam17h_20241121.bin:
+  Family=0x17 Model=0x71 Stepping=0x00: Patch=0x08701034 Length=3200 bytes Start=148 bytes Date=2024-02-23 Equiv_id=0x8710
+    Patch extracted to out/mc_equivid_0x8710_cpuid_0x00870f10_patch_0x08701034.bin
+  Family=0x17 Model=0x01 Stepping=0x02: Patch=0x0800126f Length=3200 bytes Start=3356 bytes Date=2023-12-19 Equiv_id=0x8012
+    Patch extracted to out/mc_equivid_0x8012_cpuid_0x00800f12_patch_0x0800126f.bin
+  Family=0x17 Model=0x31 Stepping=0x00: Patch=0x0830107c Length=3200 bytes Start=6564 bytes Date=2023-12-18 Equiv_id=0x8310
+    Patch extracted to out/mc_equivid_0x8310_cpuid_0x00830f10_patch_0x0830107c.bin
+  Family=0x17 Model=0x60 Stepping=0x01: Patch=0x0860010d Length=3200 bytes Start=9772 bytes Date=2024-02-23 Equiv_id=0x8601
+    Patch extracted to out/mc_equivid_0x8601_cpuid_0x00860f01_patch_0x0860010d.bin
+  Family=0x17 Model=0x08 Stepping=0x02: Patch=0x0800820d Length=3200 bytes Start=12980 bytes Date=2019-04-16 Equiv_id=0x8082
+    Patch extracted to out/mc_equivid_0x8082_cpuid_0x00800f82_patch_0x0800820d.bin
+  Family=0x17 Model=0xa0 Stepping=0x00: Patch=0x08a0000a Length=3200 bytes Start=16188 bytes Date=2024-03-04 Equiv_id=0x8a00
+    Patch extracted to out/mc_equivid_0x8a00_cpuid_0x008a0f00_patch_0x08a0000a.bin
+  Family=0x17 Model=0x68 Stepping=0x01: Patch=0x08608108 Length=3200 bytes Start=19396 bytes Date=2024-02-23 Equiv_id=0x8681
+    Patch extracted to out/mc_equivid_0x8681_cpuid_0x00860f81_patch_0x08608108.bin

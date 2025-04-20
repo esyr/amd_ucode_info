@@ -1,0 +1,3 @@
+Microcode patches in container_cache/microcode_amd_fam16h_latest.bin:
+  Family=0x16 Model=0x00 Stepping=0x01: Patch=0x0700010f Length=3458 bytes Start=52 bytes Date=2014-02-19 Equiv_id=0x7001
+    Patch extracted to out/mc_equivid_0x7001_cpuid_0x00700f01_patch_0x0700010f.bin
