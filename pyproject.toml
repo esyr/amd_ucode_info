@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "amd_ucode_info"
+version = "0.0.1"
+authors = [
+    { name="John Allen", email="john.allen@amd.com" },
+]
+description = "Parse and display information about an amd-ucode (CPU microcode) container file"
+readme = "README.md"
+requires-python = ">=3.6"
+classifiers = [
+    "Intended Audience :: System Administrators",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+]
+license = "MIT"
+license-files = ["COPYING"]
+
+[project.optional-dependencies]
+tests = ["pytest"]
+
+[project.scripts]
+amd_ucode_info = "amd_ucode_info:main"
+
+[project.urls]
+Homepage = "https://github.com/AMDESE/amd_ucode_info"
+Issues = "https://github.com/AMDESE/amd_ucode_info/issues"
+
+[tool.setuptools]
+py-modules = ["amd_ucode_info"]
