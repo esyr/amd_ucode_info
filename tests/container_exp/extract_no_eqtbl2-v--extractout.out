@@ -1,0 +1,6 @@
+Microcode patches in container:
+  Family=0x21 Model=0x34 Stepping=0x05: Patch=0x12304567 Length=64 bytes Start=52 bytes Date=2084-20-04 Equiv_id=0x1234
+    Patch extracted to out/mc_patch_012304567.bin
+Microcode patches in container+0x74:
+  Family=0x22 Model=0x57 Stepping=0x09: Patch=0x135079bd Length=68 bytes Start=168 bytes Date=2003-01-02 Equiv_id=0x1357
+    Patch extracted to out/mc_patch_0135079bd.bin

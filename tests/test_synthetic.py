@@ -9,8 +9,11 @@
 import errno
 import os
 import pytest
+import re
 import struct
 import subprocess
+
+from collections import namedtuple
 
 CUR_DIR = os.path.dirname(os.path.realpath(__file__))
 AUI_PATH = os.getenv("AUI_PATH")
@@ -48,6 +51,11 @@ def patch_hdr(rev, eqid, date=0, checksum=0, data_id=0, data_len=0,
 MAGIC = u32(0x00414d44)
 EQTBL_SECTION_ID = u32(0)
 PATCH_SECTION_ID = u32(1)
+
+ETD = namedtuple("ExtractTestData",
+                 ("extract_xfail", "split_xfail", "reason", "warnings",
+                  "data", "out"))
+
 TEST_DATA = {
     # name: (data, retcode, has_exp, err)
     # data is a tuple of bytes, retcode is an integer,
@@ -267,6 +275,68 @@ TEST_DATA = {
 }
 TESTS = TEST_DATA.keys()
 
+extract_e1 = eqtbl_item(0x01230f45, 0x1234, 0xfedcba98, 0x12345678, 0xbead)
+extract_e2 = eqtbl_item(0x01350f79, 0x1357)
+extract_e3 = eqtbl_item(0x01470fad, 0x1234)
+extract_e4 = eqtbl_item(0x0abc0fde, 0x1357)
+extract_p1 = patch_hdr(0x12304567, 0x1234, 0x20042084, 0x5a5a5a, 0xabcd, 0x42,
+                       0x23, 0xdead1022, 0xbeef1022, 0x23, 0x57, 0xae,
+                       (0xaa, 0xbb, 0xcc),
+                       tuple(x * 314159265 for x in range(1, 9)))
+extract_p2 = patch_hdr(0x135079bd, 0x1357, 0x01022003) + b'\xba\xdc\x0d\xed'
+EXTRACT_TEST_DATA = {
+    # name: ((eqtblitem,), (patch,), extract_xfail, split_xfail, (chunks),
+    #        ((extract_name, split_name, (eqtblidx), patchidx)))
+    # eqtblitem, patch are either bytes or tuples of bytes
+    # extract_xfail, split_xfail are bool
+    # chunks are either bytes directly, or special tuples:
+    # ("magic",), ("eqtable", eqtblitm, ...), ("patches", patch, ...)
+    # Magic a the beginning of the file is added automatically.
+    "extract_no_eqtbl1":
+        ETD(False, False, None,
+            ("container+0x001c: WARNING: Patch equivalence id not present " +
+             "in equivalence table (0x1234)", ""),
+            (("eqtable",), ("patches", extract_p1)),
+            (("mc_patch_012304567.bin",
+              "mc_equivid_0x1234_patch_0x12304567.bin",
+              (), extract_p1),)),
+    "extract_no_eqtbl2":
+        ETD(False, False, None,
+            ("container+0x002c: WARNING: Patch equivalence id not present " +
+             "in equivalence table (0x1234)",
+             "container+0x00a0: WARNING: Patch equivalence id not present " +
+             "in equivalence table (0x1357)", ""),
+            (("eqtable", extract_e2), ("patches", extract_p1),
+             ("magic",),
+             ("eqtable", extract_e1), ("patches", extract_p2)),
+            (("mc_patch_012304567.bin",
+              "mc_equivid_0x1234_patch_0x12304567.bin",
+              (), extract_p1),
+             ("mc_patch_0135079bd.bin",
+              "mc_equivid_0x1357_patch_0x135079bd.bin",
+              (), extract_p2),
+             )),
+    "extract_eqtbl1":
+        ETD(False, False, None, ("",),
+            (("eqtable", extract_e1), ("patches", extract_p1)),
+            (("mc_patch_012304567.bin",
+              "mc_equivid_0x1234_cpuid_0x01230f45_patch_0x12304567.bin",
+              (extract_e1,), extract_p1),)),
+    "extract_eqtbl2":
+        ETD(False, False, None, ("",),
+            (("eqtable", extract_e3, extract_e2, extract_e1, extract_e4),
+             ("patches", extract_p2, extract_p1)),
+            (("mc_patch_012304567.bin",
+              "mc_equivid_0x1234_cpuid_0x01470fad_cpuid_0x01230f45"
+              "_patch_0x12304567.bin",
+              (extract_e3, extract_e1), extract_p1),
+             ("mc_patch_0135079bd.bin",
+              "mc_equivid_0x1357_cpuid_0x01350f79_cpuid_0x0abc0fde"
+              "_patch_0x135079bd.bin",
+              (extract_e2, extract_e4), extract_p2),)),
+}
+EXTRACT_TESTS = EXTRACT_TEST_DATA.keys()
+
 
 @pytest.fixture(scope="module", params=TESTS)
 def gen_container(request, tmp_path_factory):
@@ -278,6 +348,77 @@ def gen_container(request, tmp_path_factory):
             c.write(i)
 
     return (request.param, cpath, retcode, exp_data, err_data)
+
+
+@pytest.fixture(params=EXTRACT_TESTS)
+def gen_extract_container(request, tmp_path):
+    desc = EXTRACT_TEST_DATA[request.param]
+    cpath = tmp_path / "container"
+
+    with open(cpath, mode="wb") as c:
+        c.write(MAGIC)
+        for i in desc.data:
+            if isinstance(i, bytes):
+                c.write(i)
+            elif i[0] == "magic":
+                c.write(MAGIC)
+            elif i[0] == "eqtable":
+                eqtbl = b''.join(i[1:])
+                sz = len(eqtbl) + 16
+                c.write(u32(0))
+                c.write(u32(sz))
+                c.write(eqtbl)
+                c.write(b'\0' * 16)
+            elif i[0] == "patches":
+                for p in i[1:]:
+                    c.write(u32(1))
+                    c.write(u32(len(p)))
+                    c.write(p)
+            else:
+                raise ValueError("Unexpected extract data item: %r" % i)
+
+    return (request.param, tmp_path, desc)
+
+
+@pytest.fixture
+def extract_split_container(request, gen_extract_container):
+    """
+    Processes the data from gen_extract_container and generates
+    the expected output based on which feature is used.
+
+    Param: feature name, either "extract", or "spolit".
+
+    Returns: (name, wd_path, arg_option, {patch_name: patch_data})
+      - name - test vector name
+      - wd_path - working dir to run amd_ucode_info in
+      - arg_option - argument to pass in the command line to invoke
+                     the feature requested (fature name prefixed with "--")
+      - patch_name - file name of an output patch
+      - patch_data - bytes representing the expected data that constitutes
+                     the patch
+    """
+    name, path, desc = gen_extract_container
+    is_split = request.param == "split"
+    out = {}
+
+    xfail = desc.split_xfail if is_split else desc.extract_xfail
+    if xfail:
+        request.node.add_marker(pytest.mark.xfail(reason=desc.reason))
+
+    for extract_name, split_name, eqtbl_items, patch in desc.out:
+        key = split_name if is_split else extract_name
+        if is_split:
+            print("%r" % (eqtbl_items,), file=open("/tmp/out_", "w+"))
+            eqtbl = b''.join(eqtbl_items)
+            data = b''.join((MAGIC,
+                             u32(0), u32(len(eqtbl) + 16), eqtbl, b'\0' * 16,
+                             u32(1), u32(len(patch)) + patch))
+        else:
+            data = patch
+
+        out[key] = data
+
+    return (name, path, "--" + request.param, desc.warnings, out)
 
 
 @pytest.mark.parametrize("args", [([]), (["-v"]), (["-v", "-v"]), (["-vvv"])],
@@ -299,3 +440,44 @@ def test_synthetic_container(capfd, gen_container, exp, err, args):
     assert out == exp_data
     assert err == err_data
     assert cmpl.returncode == retcode
+
+
+@pytest.mark.parametrize("extract_split_container", ["extract", "split"],
+                         indirect=True)
+@pytest.mark.parametrize("verbosity_args", [([]), (["-v"]),
+                                            (["--verbose", "--verbose"])],
+                         ids=lambda x: "".join(x))
+def test_synthetic_extract_split(request, capfd, extract_split_container, exp,
+                                 verbosity_args):
+    out_dir = "out"
+    extract_re = re.compile(r"^(    Patch extracted to )(?P<path>.*)$",
+                            re.MULTILINE)
+
+    name, cpath, arg, err_data, out_patches = extract_split_container
+    args = verbosity_args + [arg, out_dir]
+
+    # TODO: Rewrite to exp_data generation from the test data
+    exp_data = exp(name, "".join(args))
+    # Monkeypatching the output paths
+    exp_data = extract_re.sub(r"\1%s/\g<path>" % cpath, exp_data)
+
+    err_data = "\n".join(err_data)
+
+    cmpl = subprocess.run([AUI_PATH, ] + args + ["container", ], cwd=cpath)
+    out, err = capfd.readouterr()
+
+    assert out == exp_data
+    assert err == err_data
+    assert cmpl.returncode == 0
+
+    out_path = cpath / out_dir
+    processed = set()
+    for out_path in out_path.iterdir():
+        patch_name = out_path.name
+        with open(out_path, "rb") as f:
+            patch = f.read()
+
+        assert out_patches[patch_name] == patch
+        processed.add(patch_name)
+
+    assert processed == out_patches.keys()

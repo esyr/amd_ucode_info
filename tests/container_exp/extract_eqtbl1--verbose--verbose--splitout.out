@@ -1,0 +1,8 @@
+Microcode patches in container:
+ [equiv entry@0x0000000c: cpuid 0x01230f45, equiv id 0x1234, errata mask 0xfedcba98, errata compare 0x12345678, res 0xbead]
+ [equiv entry@0x0000001c: cpuid 0x00000000, equiv id 0x0000, errata mask 0x00000000, errata compare 0x00000000, res 0x0000]
+  Family=0x21 Model=0x34 Stepping=0x05: Patch=0x12304567 Length=64 bytes Start=52 bytes Date=2084-20-04 Equiv_id=0x1234
+   [data_code=0x20042084, mc_patch_data_id=0xabcd, mc_patch_data_len=0x42, init_flag=0x23, mc_patch_data_checksum=0x005a5a5a]
+   [nb_dev_id=0xdead1022, sb_dev_id=0xbeef1022, nb_rev_id=0x23, sb_rev_id=0x57, bios_api_rev=0xae, reserved=[0xaa, 0xbb, 0xcc]]
+   [match_reg=[0x12b9b0a1, 0x25736142, 0x382d11e3, 0x4ae6c284, 0x5da07325, 0x705a23c6, 0x8313d467, 0x95cd8508]]
+    Patch extracted to out/mc_equivid_0x1234_cpuid_0x01230f45_patch_0x12304567.bin
