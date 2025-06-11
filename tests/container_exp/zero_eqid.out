@@ -1,2 +1,2 @@
 Microcode patches in container:
-  Family=???? Model=???? Stepping=????: Patch=0x89abcdef Length=68 bytes
+  CPUID=0xdeadbeef: Patch=0x89abcdef Length=68 bytes

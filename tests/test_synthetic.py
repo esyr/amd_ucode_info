@@ -149,10 +149,9 @@ TEST_DATA = {
                     u32(0xbadc0ded), u32(0xface1e55), u32(0) * 4),
                    0, True,
                    ("container+0x001c: WARNING: An equivalence table record " +
-                    "with non-zero equiv_id (0x1e55) and CPUID 0xdeadbeef " +
-                    "(CPUID=0xdeadbeef) follows a record with zero CPUID " +
-                    "(at position 0xc), some loader implementations may " +
-                    "ignore it", "")),
+                    "with non-zero CPUID 0xdeadbeef (CPUID=0xdeadbeef) " +
+                    "follows a record with zero CPUID (at position 0xc), " +
+                    "some loader implementations may ignore it", "")),
     # Same equiv_id, different CPUIDs, nothing to report about
     "eqtbl_dup5": ((MAGIC, EQTBL_SECTION_ID, u32(48),
                     u32(0xdeadbeef), u32(0xfeedcafe),
@@ -169,7 +168,10 @@ TEST_DATA = {
                     u32(0xbadc0ded), u32(0xface0000),
                     u32(0xdeadbeef), u32(0xfeedcafe),
                     u32(0xbadc0ded), u32(0xface1e55), u32(0) * 4),
-                   0, True, ("",)),
+                   0, True,
+                   ("container+0x001c: WARNING: Different equiv_id's " +
+                    "(0x1e55 and 0x0000) are present in the equivalence " +
+                    "table for CPUID 0xdeadbeef (CPUID=0xdeadbeef)", "")),
     "bad_patch1": ((MAGIC, EQTBL_SECTION_ID, u32(16), u32(0) * 4,
                     EQTBL_SECTION_ID),
                    errno.EINVAL, True,
@@ -219,8 +221,7 @@ TEST_DATA = {
                   0, True,
                   ("container+0x002c: WARNING: Reserved field (0xb) " +
                    "in the family 17h+ patch level (0x89abcdef) is not zero",
-                   "container+0x002c: WARNING: Patch equivalence id " +
-                   "not present in equivalence table (0x0000)", "")),
+                   "")),
     "zero_cpuid": ((MAGIC, EQTBL_SECTION_ID, u32(32),
                     eqtbl_item(0x00000000, 0xdead), u32(0) * 4,
                     PATCH_SECTION_ID, u32(64),
@@ -228,6 +229,8 @@ TEST_DATA = {
                    0, True,
                    ("container+0x002c: WARNING: Reserved field (0xc) " +
                     "in the family 17h+ patch level (0xbadc0ded) is not zero",
+                    "container+0x002c: WARNING: Patch equivalence id" +
+                    " not present in equivalence table (0xdead)",
                     "")),
     "miss_cpuid": ((MAGIC, EQTBL_SECTION_ID, u32(32),
                     eqtbl_item(0x00780fab, 0xdead), u32(0) * 4,

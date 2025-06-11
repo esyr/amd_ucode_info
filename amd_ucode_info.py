@@ -431,16 +431,18 @@ def parse_equiv_table(opts, ucode_file, start_offset, eq_table_len):
         equiv_id = read_int16(ucode_file)
         res = read_int16(ucode_file)
 
-        if equiv_id != 0:
+        # Most implementation seem to check the validity of the record
+        # based on the (non-zero) CPUID signature value
+        if cpu_id != 0:
             # FreeBSD container parser does not iterate over the whole section,
             # but instead scans until it encounters a record with zero CPUID.
-            if zero_cpuid_record and cpu_id != 0:
-                warn(("An equivalence table record with non-zero " +
-                      "equiv_id (%#06x) and CPUID %#010x (%s) follows " +
-                      "a record with zero CPUID (at position %#x), some " +
-                      "loader implementations may ignore it") %
-                     (equiv_id, cpu_id, cpuid2str(cpu_id),
-                      zero_cpuid_record), ucode_file, table_item)
+            if zero_cpuid_record:
+                warn(("An equivalence table record with non-zero CPUID " +
+                      "%#010x (%s) follows a record with zero CPUID " +
+                      "(at position %#x), some loader implementations " +
+                      "may ignore it") %
+                     (cpu_id, cpuid2str(cpu_id), zero_cpuid_record),
+                     ucode_file, table_item)
 
             if equiv_id not in table:
                 table[equiv_id] = OrderedDict()
@@ -464,12 +466,11 @@ def parse_equiv_table(opts, ucode_file, start_offset, eq_table_len):
             entry = EquivTableEntry(cpu_id, equiv_id, data, table_item)
             table[equiv_id][cpu_id] = entry
             raw_table.append(entry)
-
-        # FreeBSD parser does not respect section size at all and scans
-        # the equivalence table until it encounters a record with zero CPUID
-        # (see sys/x86/x86/ucode_subr.c:ucode_amd_find()), so check
-        # for a presence of such guard record.
-        if cpu_id == 0:
+        else:
+            # FreeBSD parser does not respect section size at all and scans
+            # the equivalence table until it encounters a record with zero
+            # CPUID (see sys/x86/x86/ucode_subr.c:ucode_amd_find()), so check
+            # for a presence of such guard record.
             zero_cpuid_record = table_item
 
         if opts.verbose >= VERBOSE_DEBUG:
